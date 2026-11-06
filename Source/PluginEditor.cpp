@@ -241,7 +241,9 @@ namespace
 // board-image pixels: first trimmer of group g at (112 + 196 g, 933), 52 px apart.
 // groups: ACC, BD, SD, OH, CH, CY, CP
 const char* kGroupIds[7] = { "acc", "bd", "sd", "oh", "ch", "cy", "cp" };
-const juce::Point<float> kBoardScrews[] = { { 119, 128 }, { 1387, 123 }, { 102, 783 }, { 1384, 783 } };
+const juce::Point<float> kBoardScrews[] = { { 127, 117 }, { 330, 113 }, { 1181, 111 }, { 1385, 107 }, { 113, 240 }, { 1388, 234 },
+                                            { 104, 354 }, { 104, 544 }, { 1385, 457 }, { 103, 678 }, { 1398, 677 }, { 380, 655 }, { 655, 652 } };
+const juce::Rectangle<float> kBoardChips[] = { { 412, 158, 92, 92 }, { 566, 163, 126, 96 }, { 551, 323, 142, 122 } };
 }
 
 PcbView::PcbView (Tross110Processor& p, Tross110Editor& ed) : proc (p), editor (ed)
@@ -249,29 +251,29 @@ PcbView::PcbView (Tross110Processor& p, Tross110Editor& ed) : proc (p), editor (
     board = juce::ImageCache::getFromMemory (BinaryData::pcb_png, BinaryData::pcb_pngSize);
     trimLook.kind = KnobLook::Trimmer;
     smallTrimLook.kind = KnobLook::SmallTrimmer;
-    scale = (float) kDesignH / (float) board.getHeight();
-    xOff = ((float) kDesignW - board.getWidth() * scale) * 0.5f;
+    scale = 1.0f; xOff = 0.0f;   // the board image is made the same size as the panel
 
     const float a0 = juce::MathConstants<float>::pi * 1.2f, a1 = juce::MathConstants<float>::pi * 2.8f;
     auto add = [&] (const juce::String& id, float bx, float by, bool small)
     {
         auto* k = trims.add (new Knob (proc.apvts, id, small ? smallTrimLook : trimLook, a0, a1));
-        const float d = (small ? 30.0f : 44.0f) * scale;
+        const float d = (small ? 26.0f : 40.0f) * scale;
         const auto c = toView (bx, by);
         k->setBounds (juce::Rectangle<float> (d + 6, d + 6).withCentre (c).toNearestInt());
         addAndMakeVisible (k);
     };
+    auto groupX = [] (int g) { return 113.0f + 194.8f * (float) g; };
     for (int g = 0; g < 7; ++g)
     {
-        const float x0 = 112.0f + 196.0f * (float) g, y = 933.0f;
+        const float x0 = groupX (g), y = 800.0f;
         const juce::String id = kGroupIds[g];
-        if (g == 0) { add ("acc_drive", x0, y, false); add ("acc_decay", x0 + 52, y, false); add ("accent", x0 + 104, y, false); }
-        else        { add (id + "_tune", x0, y, false); add (id + "_decay", x0 + 52, y, false); add (id + "_lvl", x0 + 104, y, false); }
+        if (g == 0) { add ("acc_drive", x0, y, false); add ("acc_decay", x0 + 51, y, false); add ("accent", x0 + 102, y, false); }
+        else        { add (id + "_tune", x0, y, false); add (id + "_decay", x0 + 51, y, false); add (id + "_lvl", x0 + 102, y, false); }
     }
-    add ("bd_attack", 112.0f + 196.0f * 1 + 112.0f, 857.0f, true);
-    add ("sd_snappy", 112.0f + 196.0f * 2 + 112.0f, 857.0f, true);
-    add ("cy_tone",   112.0f + 196.0f * 5 + 112.0f, 857.0f, true);
-    add ("cp_tail",   112.0f + 196.0f * 6 + 112.0f, 857.0f, true);
+    add ("bd_attack", groupX (1) + 112.0f, 741.0f, true);
+    add ("sd_snappy", groupX (2) + 112.0f, 741.0f, true);
+    add ("cy_tone",   groupX (5) + 112.0f, 741.0f, true);
+    add ("cp_tail",   groupX (6) + 112.0f, 741.0f, true);
 }
 
 juce::Point<float> PcbView::toView (float x, float y) const { return { xOff + x * scale, y * scale }; }
@@ -283,51 +285,54 @@ void PcbView::paint (juce::Graphics& g)
     g.drawImage (board, juce::Rectangle<float> (xOff, 0.0f, board.getWidth() * scale, (float) kDesignH));
 }
 
-bool PcbView::overScrew (juce::Point<float> p) const
+bool PcbView::closesCase (juce::Point<float> p) const
 {
     for (auto s : kBoardScrews) if (p.getDistanceFrom (toView (s.x, s.y)) < 16.0f) return true;
+    for (auto c : kBoardChips) if (c.contains (p)) return true;
     return false;
 }
 
 void PcbView::mouseMove (const juce::MouseEvent& e)
 {
-    setMouseCursor (overScrew (e.position) ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+    setMouseCursor (closesCase (e.position) ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
 }
 
 void PcbView::mouseUp (const juce::MouseEvent& e)
 {
-    if (e.mods.isPopupMenu() || overScrew (e.position)) editor.openCase (false);
+    if (e.mods.isPopupMenu() || closesCase (e.position)) editor.openCase (false);
 }
 
 // =================================================================================================
 // front panel
 juce::Rectangle<int> FrontPanel::keyRect (int key)
 {
-    static const int numX[8] = { 354, 445, 536, 627, 717, 808, 899, 990 };
+    static const int numX[8] = { 356, 449, 542, 635, 729, 823, 917, 1011 };
+    static const int numY[8] = { 571, 570, 572, 574, 574, 575, 576, 577 };
     switch (key)
     {
-        case Shift:   return { 95, 546, 100, 76 };
-        case Bank:    return { 263, 545, 46, 76 };
-        case Start:   return { 1096, 520, 101, 98 };
-        case Stop:    return { 1265, 519, 102, 98 };
-        case KAccent: return { 96, 687, 131, 83 };
-        case KBD:     return { 287, 686, 129, 83 };
-        case KSD:     return { 476, 685, 128, 84 };
-        case KOH:     return { 664, 685, 129, 83 };
-        case KCH:     return { 854, 684, 129, 83 };
-        case KCY:     return { 1043, 683, 130, 84 };
-        case KCP:     return { 1234, 682, 132, 84 };
+        case Shift:   return { 90, 569, 104, 80 };
+        case Bank:    return { 262, 570, 48, 80 };
+        case Start:   return { 1122, 555, 106, 105 };
+        case Stop:    return { 1299, 556, 107, 105 };
+        case KAccent: return { 89, 718, 136, 88 };
+        case KBD:     return { 283, 719, 136, 89 };
+        case KSD:     return { 479, 722, 133, 88 };
+        case KOH:     return { 674, 724, 132, 89 };
+        case KCH:     return { 869, 726, 135, 89 };
+        case KCY:     return { 1066, 729, 137, 89 };
+        case KCP:     return { 1266, 730, 140, 90 };
         default:      break;
     }
-    if (key >= N1 && key <= N8) return { numX[key - N1], 544, 46, 76 };
+    if (key >= N1 && key <= N8) return { numX[key - N1], numY[key - N1], 48, 80 };
     return {};
 }
 
 namespace
 {
-constexpr float kLabelW = 76.0f, kTopRow = 24.0f, kRowH = 21.5f;
-const juce::Point<float> kFrontScrews[] = { { 36, 808 }, { 1419, 808 } };
-const juce::Rectangle<int> kLogo { 100, 50, 345, 70 }, kPowerHit { 1205, 0, 100, 48 }, kPowerTab { 1223, 13, 37, 10 };
+constexpr float kLabelW = 78.0f, kTopRow = 24.0f, kRowH = 22.5f;
+const juce::Point<float> kFrontScrews[] = { { 44, 858 }, { 1456, 858 } };
+const juce::Rectangle<int> kLogo { 100, 45, 360, 66 }, kPowerSwitch { 1238, 0, 76, 46 }, kPowerText { 1255, 55, 92, 42 },
+                           kPowerTab { 1253, 15, 40, 10 };
 }
 
 juce::Rectangle<int> FrontPanel::lcdCell (int row, int step)
@@ -342,11 +347,11 @@ FrontPanel::FrontPanel (Tross110Processor& p, Tross110Editor& ed) : proc (p), ed
     panel = juce::ImageCache::getFromMemory (BinaryData::panel_png, BinaryData::panel_pngSize);
     knobLook.knob = juce::ImageCache::getFromMemory (BinaryData::knob_png, BinaryData::knob_pngSize);
     const char* ids[4] = { "tempo", "balance", "accent", "master" };
-    const int cx[4] = { 880, 1032, 1185, 1338 };
+    const int cx[4] = { 899, 1056, 1216, 1376 }, cy[4] = { 297, 300, 302, 302 };
     for (int i = 0; i < 4; ++i)
     {
         auto* k = knobs.add (new Knob (proc.apvts, ids[i], knobLook, kKnobStart, kKnobEnd));
-        k->setBounds (juce::Rectangle<int> (124, 124).withCentre ({ cx[i], 283 }));
+        k->setBounds (juce::Rectangle<int> (124, 124).withCentre ({ cx[i], cy[i] }));
         addAndMakeVisible (k);
     }
     bank = proc.getCurrentSlot() / 8;
@@ -372,12 +377,12 @@ void FrontPanel::timerCallback()
         lastVersion = v; lastStep = st; lastSlot = sl;
         repaint (lcdRect().expanded (2));
     }
-    if (blink % 15 == 0) repaint (kPowerHit);
+    if (blink % 15 == 0) repaint (kPowerSwitch);
 }
 
 void FrontPanel::drawScrew (juce::Graphics& g, juce::Point<float> c) const
 {
-    const float r = 9.0f;
+    const float r = 14.0f;
     g.setColour (juce::Colours::black.withAlpha (0.35f));
     g.fillEllipse (juce::Rectangle<float> (r * 2 + 3, r * 2 + 3).withCentre (c.translated (1, 1.5f)));
     juce::ColourGradient gr (juce::Colour (0xffeef0ee), c.x - r * 0.5f, c.y - r * 0.6f, juce::Colour (0xff7d8285), c.x + r * 0.7f, c.y + r, true);
@@ -386,8 +391,8 @@ void FrontPanel::drawScrew (juce::Graphics& g, juce::Point<float> c) const
     g.setColour (juce::Colour (0xff5d6164));
     g.drawEllipse (juce::Rectangle<float> (r * 2, r * 2).withCentre (c), 0.8f);
     juce::Path x;
-    x.addRectangle (-1.1f, -r * 0.62f, 2.2f, r * 1.24f);
-    x.addRectangle (-r * 0.62f, -1.1f, r * 1.24f, 2.2f);
+    x.addRectangle (-1.5f, -r * 0.62f, 3.0f, r * 1.24f);
+    x.addRectangle (-r * 0.62f, -1.5f, r * 1.24f, 3.0f);
     x.applyTransform (juce::AffineTransform::rotation (0.35f).translated (c.x, c.y));
     g.setColour (juce::Colour (0xff3c4043));
     g.fillPath (x);
@@ -395,7 +400,7 @@ void FrontPanel::drawScrew (juce::Graphics& g, juce::Point<float> c) const
 
 bool FrontPanel::overScrew (juce::Point<int> p) const
 {
-    for (auto s : kFrontScrews) if (p.toFloat().getDistanceFrom (s) < 14.0f) return true;
+    for (auto s : kFrontScrews) if (p.toFloat().getDistanceFrom (s) < 18.0f) return true;
     return false;
 }
 
@@ -424,13 +429,13 @@ void FrontPanel::paint (juce::Graphics& g)
         const auto tab = panel.getClippedImage (kPowerTab);
         g.setColour (juce::Colours::black);
         g.fillRect (kPowerTab.withTrimmedBottom (3));
-        g.drawImageAt (tab, kPowerTab.getX() + 30, kPowerTab.getY());
+        g.drawImageAt (tab, kPowerTab.getX() + 32, kPowerTab.getY());
     }
 
     drawLcd (g);
 
     if (heldKey >= 0) drawKeyPressed (g, keyRect (heldKey));
-    if (shiftLatched && heldKey != Shift) drawKeyPressed (g, keyRect (Shift));
+    if ((shiftLatched || lockView) && heldKey != Shift) drawKeyPressed (g, keyRect (Shift));
     if (accentArmed && heldKey != KAccent) drawKeyPressed (g, keyRect (KAccent));
 
     for (auto s : kFrontScrews) drawScrew (g, s);
@@ -440,6 +445,7 @@ void FrontPanel::drawLcd (juce::Graphics& g)
 {
     const auto glass = lcdRect().toFloat();
     if (! powered()) return;   // a dark (blank) display
+    if (lockView) { drawLockScreen (g); return; }
 
     const int slot = proc.getCurrentSlot(), playStep = proc.getPlayStep(), length = len();
     const int mode = proc.getMode();
@@ -503,9 +509,9 @@ void FrontPanel::drawLcd (juce::Graphics& g)
 
     // lower boxes: MODE | PATTERN | TEMPO
     const float by = gridArea.getBottom() + 7.0f, bh = glass.getBottom() - 6.0f - by;
-    const juce::Rectangle<float> boxes[3] = { { glass.getX() + 6.0f, by, 236.0f, bh },
-                                              { glass.getX() + 248.0f, by, 112.0f, bh },
-                                              { glass.getX() + 366.0f, by, glass.getWidth() - 374.0f, bh } };
+    const juce::Rectangle<float> boxes[3] = { { glass.getX() + 6.0f, by, 244.0f, bh },
+                                              { glass.getX() + 256.0f, by, 116.0f, bh },
+                                              { glass.getX() + 378.0f, by, glass.getWidth() - 386.0f, bh } };
     const char* titles[3] = { "MODE", "PATTERN", "TEMPO" };
     for (int i = 0; i < 3; ++i)
     {
@@ -628,7 +634,8 @@ void FrontPanel::pressKey (int key, bool shiftHeld)
     }
     else if (const int v = keyVoice (key); v >= 0)
     {
-        if (mode == Tross110Processor::WriteStep) stepRow = v + 1;
+        if (lockView) { lockVoice = v; if (lockParam == LExtra && ! hasExtra (v)) lockParam = LTune; proc.panelHit (v, false); }
+        else if (mode == Tross110Processor::WriteStep) stepRow = v + 1;
         else if (mode == Tross110Processor::WriteSong && key == KOH)   // ENTER: the playing pattern
         {
             proc.chainAppend (proc.getCurrentSlot());
@@ -648,22 +655,206 @@ void FrontPanel::pressKey (int key, bool shiftHeld)
     repaint();
 }
 
+// ---- the parameter-lock screen ---------------------------------------------------------------
+namespace
+{
+const char* kVoiceNames[kNumVoices] = { "BASS DRUM", "SNARE", "HAND CLAP", "C.HIHAT", "O.HIHAT", "CYMBAL" };
+juce::String lockParamName (int voice, int param)
+{
+    switch (param)
+    {
+        case LTune:  return "TUNE";
+        case LDecay: return "DECAY";
+        case LLevel: return "LEVEL";
+        default:     return voice == BD ? "ATTACK" : voice == SD ? "SNAPPY" : voice == CP ? "TAIL" : "TONE";
+    }
+}
+}
+
+juce::Rectangle<float> FrontPanel::lockLane()
+{
+    const auto glass = lcdRect().toFloat();
+    const float x0 = glass.getX() + kLabelW;
+    return { x0, glass.getY() + kTopRow, glass.getRight() - 8.0f - x0, kRowH * kNumRows };
+}
+
+juce::Rectangle<float> FrontPanel::lockBox (int i) const
+{
+    const auto glass = lcdRect().toFloat();
+    const float by = glass.getY() + kTopRow + kRowH * kNumRows + 7.0f, bh = glass.getBottom() - 6.0f - by;
+    if (i == 0) return { glass.getX() + 6.0f, by, 160.0f, bh };
+    if (i == 1) return { glass.getX() + 172.0f, by, 150.0f, bh };
+    return { glass.getX() + 328.0f, by, glass.getWidth() - 336.0f, bh };
+}
+
+juce::String FrontPanel::lockValueText (float v) const
+{
+    if (lockParam == LTune)  return (v >= 0 ? "+" : "") + juce::String (v, 1) + " ST";
+    if (lockParam == LLevel) return v <= -69.9f ? juce::String ("-INF DB") : juce::String (v, 1) + " DB";
+    return juce::String (juce::roundToInt (v)) + " %";
+}
+
+void FrontPanel::setLockFromY (int step, float y)
+{
+    const auto lane = lockLane();
+    const float t = juce::jlimit (0.0f, 1.0f, 1.0f - (y - lane.getY()) / lane.getHeight());
+    float v = lockMin (lockParam) + t * (lockMax (lockParam) - lockMin (lockParam));
+    if (lockParam == LTune) v = std::round (v * 2.0f) * 0.5f;   // half-semitone steps
+    else if (lockParam == LLevel) v = std::round (v * 2.0f) * 0.5f;
+    else v = std::round (v);
+    proc.patterns.setLock (proc.getCurrentSlot(), lockVoice, lockParam, step, v);
+    lockShownStep = step;
+}
+
+void FrontPanel::drawLockScreen (juce::Graphics& g)
+{
+    const auto glass = lcdRect().toFloat();
+    const int slot = proc.getCurrentSlot(), playStep = proc.getPlayStep(), length = len();
+    auto ink = [] (float a = 0.86f) { return lcdInk.withAlpha (a); };
+    const auto lane = lockLane();
+    const float cw = lane.getWidth() / 16.0f;
+
+    for (int s = 0; s < kNumSteps; ++s)
+    {
+        auto r = juce::Rectangle<float> (lane.getX() + s * cw, glass.getY() + 6.0f, cw, 15.0f);
+        const bool on = s == playStep;
+        if (on) { g.setColour (ink()); g.fillRect (r.reduced (1.0f, 0)); }
+        g.setColour (on ? lcdGlass : ink (s < length ? 0.86f : 0.25f));
+        g.setFont (font (10.5f));
+        g.drawText (juce::String (s + 1), r, juce::Justification::centred);
+    }
+
+    // left column: what is being locked, and the scale
+    auto col = juce::Rectangle<float> (glass.getX() + 6.0f, lane.getY(), kLabelW - 10.0f, lane.getHeight());
+    g.setColour (ink (0.75f));
+    g.drawRect (col.getUnion (lane), 1.4f);
+    g.drawVerticalLine ((int) lane.getX(), lane.getY(), lane.getBottom());
+    g.setColour (ink());
+    g.fillRect (col.withHeight (18.0f).reduced (2.0f));
+    g.setColour (lcdGlass);
+    g.setFont (font (10.5f));
+    g.drawText ("P-LOCK", col.withHeight (18.0f), juce::Justification::centred);
+    g.setColour (ink());
+    g.setFont (font (9.5f));
+    g.drawText (lockValueText (lockMax (lockParam)), col.withTrimmedTop (20.0f).withHeight (14.0f).withTrimmedLeft (4.0f), juce::Justification::centredLeft);
+    g.drawText (lockValueText (lockMin (lockParam)), col.withTrimmedTop (col.getHeight() - 15.0f).withTrimmedLeft (4.0f), juce::Justification::centredLeft);
+    g.setFont (font (11.0f));
+    g.drawFittedText (juce::String (kVoiceNames[lockVoice]) + "\n" + lockParamName (lockVoice, lockParam),
+                      col.withTrimmedTop (40.0f).withTrimmedBottom (20.0f).withTrimmedLeft (4.0f).toNearestInt(), juce::Justification::centredLeft, 3);
+
+    // bars
+    const bool bipolar = lockParam == LTune;
+    const float base = bipolar ? lane.getCentreY() : lane.getBottom() - 1.0f;
+    if (bipolar) { g.setColour (ink (0.35f)); g.drawHorizontalLine ((int) base, lane.getX(), lane.getRight()); }
+    for (int s = 0; s < kNumSteps; ++s)
+    {
+        const auto c = juce::Rectangle<float> (lane.getX() + s * cw, lane.getY(), cw, lane.getHeight()).reduced (3.5f, 2.0f);
+        if (s > 0) { g.setColour (ink (0.18f)); g.drawVerticalLine ((int) (lane.getX() + s * cw), lane.getY(), lane.getBottom()); }
+        const float v = proc.patterns.getLock (slot, lockVoice, lockParam, s);
+        const bool trig = proc.patterns.cell (slot, lockVoice + 1, s);
+        if (isLock (v))
+        {
+            const float t = (v - lockMin (lockParam)) / (lockMax (lockParam) - lockMin (lockParam));
+            const float y = lane.getBottom() - 2.0f - t * (lane.getHeight() - 4.0f);
+            g.setColour (ink (s < length ? 0.88f : 0.3f));
+            g.fillRect (juce::Rectangle<float>::leftTopRightBottom (c.getX(), juce::jmin (y, base), c.getRight(), juce::jmax (y, base)).withHeight (juce::jmax (2.0f, std::abs (y - base))));
+        }
+        else
+        {
+            g.setColour (lcdInk.withAlpha (0.055f));
+            g.fillRect (c);
+        }
+        // the drum's own step: a mark under the bar
+        if (trig) { g.setColour (ink()); g.fillRect (c.getX() + 2.0f, lane.getBottom() + 1.5f, c.getWidth() - 4.0f, 2.5f); }
+    }
+    if (playStep >= 0) { g.setColour (ink (0.12f)); g.fillRect (juce::Rectangle<float> (lane.getX() + playStep * cw, lane.getY(), cw, lane.getHeight())); }
+
+    // lower boxes: DRUM | SETTING | VALUE (click the first two to change them)
+    const char* titles[3] = { "DRUM  (click)", "SETTING  (click)", "VALUE" };
+    for (int i = 0; i < 3; ++i)
+    {
+        const auto b = lockBox (i);
+        g.setColour (ink (0.75f));
+        g.drawRoundedRectangle (b, 3.0f, 1.4f);
+        g.setFont (font (8.5f));
+        g.drawText (titles[i], b.withHeight (13.0f).withTrimmedLeft (5.0f), juce::Justification::centredLeft);
+        g.drawHorizontalLine ((int) (b.getY() + 13.0f), b.getX(), b.getRight());
+    }
+    g.setColour (ink());
+    g.setFont (font (18.0f));
+    g.drawFittedText (kVoiceNames[lockVoice], lockBox (0).withTrimmedTop (14.0f).reduced (6.0f, 2.0f).withTrimmedBottom (16.0f).toNearestInt(), juce::Justification::centredLeft, 1);
+    g.drawFittedText (lockParamName (lockVoice, lockParam), lockBox (1).withTrimmedTop (14.0f).reduced (6.0f, 2.0f).withTrimmedBottom (16.0f).toNearestInt(), juce::Justification::centredLeft, 1);
+    const bool msgOn = message.isNotEmpty();
+    juce::String val = "-";
+    if (msgOn) val = message;
+    else if (lockShownStep >= 0)
+    {
+        const float v = proc.patterns.getLock (slot, lockVoice, lockParam, lockShownStep);
+        val = "STEP " + juce::String (lockShownStep + 1) + "  " + (isLock (v) ? lockValueText (v) : juce::String ("KNOB"));
+    }
+    g.setFont (font (msgOn ? 14.0f : 16.0f));
+    g.drawFittedText (val, lockBox (2).withTrimmedTop (14.0f).reduced (6.0f, 2.0f).withTrimmedBottom (16.0f).toNearestInt(), juce::Justification::centredLeft, 2);
+    g.setFont (font (9.5f));
+    g.drawText ("DRAG = SET  DBL-CLICK = CLEAR", lockBox (2).withTrimmedTop (lockBox (2).getHeight() - 15.0f).withTrimmedLeft (6.0f), juce::Justification::centredLeft);
+    g.drawText ("PATTERN " + slotName (slot) + (shiftLatched ? "  SHIFT" : ""), lockBox (0).withTrimmedTop (lockBox (0).getHeight() - 15.0f).withTrimmedLeft (6.0f), juce::Justification::centredLeft);
+}
+
+// ---- copy / paste --------------------------------------------------------------------------
+void FrontPanel::copyPattern()
+{
+    const int slot = proc.getCurrentSlot();
+    clip.valid = true;
+    for (int r = 0; r < kNumRows; ++r) clip.rows[r] = proc.patterns.get (slot, r);
+    for (int v = 0; v < kNumVoices; ++v) for (int p = 0; p < kNumLockParams; ++p) for (int s = 0; s < kNumSteps; ++s)
+        clip.locks[v][p][s] = proc.patterns.getLock (slot, v, p, s);
+    flash ("COPIED " + slotName (slot));
+}
+
+bool FrontPanel::pastePattern()
+{
+    if (! clip.valid) return false;
+    const int slot = proc.getCurrentSlot();
+    for (int r = 0; r < kNumRows; ++r) proc.patterns.set (slot, r, clip.rows[r]);
+    for (int v = 0; v < kNumVoices; ++v) for (int p = 0; p < kNumLockParams; ++p) for (int s = 0; s < kNumSteps; ++s)
+        proc.patterns.setLock (slot, v, p, s, clip.locks[v][p][s]);
+    flash ("PASTED TO " + slotName (slot));
+    return true;
+}
+
 void FrontPanel::mouseDown (const juce::MouseEvent& e)
 {
     const auto p = e.getPosition();
-    if (kPowerHit.contains (p))
+    if (kPowerSwitch.contains (p))
     {
         auto* pw = proc.apvts.getParameter ("power");
         pw->setValueNotifyingHost (powered() ? 0.0f : 1.0f);
         repaint();
         return;
     }
-    if (overScrew (p)) { editor.openCase (true); return; }
+    if (overScrew (p) || kPowerText.contains (p)) { editor.openCase (true); return; }
     if (kLogo.contains (p)) { editor.showAbout(); return; }
 
     if (lcdRect().contains (p) && powered())
     {
         if (e.mods.isPopupMenu()) { showLcdMenu(); return; }
+        if (lockView)
+        {
+            const auto lane = lockLane();
+            if (lane.contains (e.position))
+            {
+                const int st = juce::jlimit (0, kNumSteps - 1, (int) ((e.position.x - lane.getX()) / (lane.getWidth() / 16.0f)));
+                if (e.getNumberOfClicks() >= 2 || e.mods.isAltDown())
+                {
+                    proc.patterns.clearLock (proc.getCurrentSlot(), lockVoice, lockParam, st);
+                    lockShownStep = st;
+                }
+                else { lockPaintStep = st; setLockFromY (st, e.position.y); }
+            }
+            else if (lockBox (0).contains (e.position)) { lockVoice = (lockVoice + 1) % kNumVoices; if (lockParam == LExtra && ! hasExtra (lockVoice)) lockParam = LTune; }
+            else if (lockBox (1).contains (e.position)) { lockParam = (lockParam + 1) % (hasExtra (lockVoice) ? kNumLockParams : kNumLockParams - 1); }
+            repaint (lcdRect());
+            return;
+        }
         for (int r = 0; r < kNumRows; ++r)
             for (int s = 0; s < kNumSteps; ++s)
                 if (lcdCell (r, s).contains (p))
@@ -687,6 +878,7 @@ void FrontPanel::mouseDown (const juce::MouseEvent& e)
                 return;
             }
             heldKey = k;
+            if (k == Shift && e.getNumberOfClicks() >= 2) { toggleLockView(); flash (lockView ? "P-LOCK" : modeName (proc.getMode())); return; }
             pressKey (k, e.mods.isShiftDown());
             repaint();
             return;
@@ -695,6 +887,14 @@ void FrontPanel::mouseDown (const juce::MouseEvent& e)
 
 void FrontPanel::mouseDrag (const juce::MouseEvent& e)
 {
+    if (lockPaintStep >= 0)
+    {
+        const auto lane = lockLane();
+        const int st = juce::jlimit (0, kNumSteps - 1, (int) ((e.position.x - lane.getX()) / (lane.getWidth() / 16.0f)));
+        setLockFromY (st, e.position.y);
+        repaint (lcdRect());
+        return;
+    }
     if (paintRow < 0) return;
     const auto p = e.getPosition();
     for (int s = 0; s < kNumSteps; ++s)
@@ -708,13 +908,14 @@ void FrontPanel::mouseDrag (const juce::MouseEvent& e)
 void FrontPanel::mouseUp (const juce::MouseEvent&)
 {
     paintRow = -1;
+    lockPaintStep = -1;
     if (heldKey >= 0) { heldKey = -1; repaint(); }
 }
 
 void FrontPanel::mouseMove (const juce::MouseEvent& e)
 {
     const auto p = e.getPosition();
-    bool hand = kPowerHit.contains (p) || overScrew (p) || kLogo.contains (p);
+    bool hand = kPowerSwitch.contains (p) || kPowerText.contains (p) || overScrew (p) || kLogo.contains (p) || lcdRect().contains (p);
     for (int k = 0; k < kNumKeys && ! hand; ++k) hand = keyRect (k).contains (p);
     setMouseCursor (hand ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
 }
@@ -757,7 +958,16 @@ void FrontPanel::showLcdMenu()
     m.addItem (3, "Export every pattern as its own file...", ! nonEmpty.empty());
     m.addItem (4, "Export the song...", ! chain.empty());
     m.addSeparator();
+    m.addItem (7, "Copy pattern");
+    m.addItem (8, clip.valid ? "Paste pattern into " + slotName (slot) : juce::String ("Paste pattern"), clip.valid);
     m.addSubMenu ("Copy pattern to", copy);
+    m.addSeparator();
+    if (lockView)
+    {
+        m.addItem (9, "Clear these locks (" + lockParamName (lockVoice, lockParam) + ")");
+        m.addItem (10, "Clear all locks of this drum");
+        m.addItem (11, "Clear all locks in this pattern", proc.patterns.hasAnyLock (slot));
+    }
     m.addItem (5, "Clear pattern");
     m.addItem (6, "Clear song", ! chain.empty());
     m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this).withMousePosition(),
@@ -771,6 +981,11 @@ void FrontPanel::showLcdMenu()
                          if (r == 4) self.exportMidi (chain, "UNIT110 Song.mid");
                          if (r == 5) { self.proc.patterns.clear (slot); self.flash ("PATTERN CLEARED"); }
                          if (r == 6) { self.proc.chainClear(); self.flash ("SONG CLEARED"); }
+                         if (r == 7) self.copyPattern();
+                         if (r == 8) self.pastePattern();
+                         if (r == 9)  { self.proc.patterns.clearLocks (slot, self.lockVoice, self.lockParam); self.flash ("LOCKS CLEARED"); }
+                         if (r == 10) { self.proc.patterns.clearLocks (slot, self.lockVoice, -1); self.flash ("LOCKS CLEARED"); }
+                         if (r == 11) { self.proc.patterns.clearLocks (slot, -1, -1); self.flash ("ALL LOCKS CLEARED"); }
                          if (r >= 100) { self.proc.patterns.copySlot (slot, r - 100); self.flash ("COPIED TO " + slotName (r - 100)); }
                      });
 }

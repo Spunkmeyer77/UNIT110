@@ -449,8 +449,24 @@ int main (int argc, char** argv)
         fp.pressKey (FrontPanel::Bank, false); fp.pressKey (FrontPanel::Bank, false); fp.pressKey (FrontPanel::Bank, false);
         fp.pressKey (FrontPanel::N1, false); run (1);
         check (proc.getCurrentSlot() == 0, "back to A1");
+        // copy / paste and the parameter-lock screen
+        proc.patterns.setCell (0, 1, 0, true); proc.patterns.setCell (0, 1, 8, true);
+        fp.copyPattern();
+        fp.pressKey (FrontPanel::N4, false); run (1);
+        check (fp.pastePattern() && pats.cell (3, 1, 0) && pats.cell (3, 1, 8), "copy A1, paste into A4");
+        fp.pressKey (FrontPanel::N1, false); run (1);
+        fp.toggleLockView();
+        check (fp.isLockView(), "double-click SHIFT shows the P-LOCK screen");
+        fp.pressKey (FrontPanel::KBD, false);
+        fp.lockParam = tross110::LTune;
+        fp.setLockFromY (0, FrontPanel::lockLane().getY());   // top = +12 st
+        check (std::abs (pats.getLock (0, tross110::BD, tross110::LTune, 0) - 12.0f) < 0.01f, "dragging to the top locks BD step 1 tune to +12");
+        fp.setLockFromY (8, FrontPanel::lockLane().getCentreY());
+        check (std::abs (pats.getLock (0, tross110::BD, tross110::LTune, 8)) < 0.6f, "the middle of the tune lane = 0 st");
         proc.internalPlay = true; run (30);
         ed->setSize (unit110ui::kDesignW, unit110ui::kDesignH);
+        snap ("editor_locks.png");
+        fp.toggleLockView();
         snap ("editor_playing.png");
         proc.internalPlay = false; run (2);
         te->openCase (true, false);

@@ -9,7 +9,7 @@
 // panel image's own pixels (kDesignW x kDesignH) and scaled to the window.
 namespace unit110ui
 {
-constexpr int kDesignW = 1455, kDesignH = 853;
+constexpr int kDesignW = 1500, kDesignH = 908;
 
 // a knob or trimmer drawn from an image (or by hand) that turns with its value
 struct KnobLook : juce::LookAndFeel_V4
@@ -61,7 +61,7 @@ private:
     unit110ui::KnobLook trimLook, smallTrimLook;
     juce::OwnedArray<unit110ui::Knob> trims;
     float scale = 1.0f, xOff = 0.0f;
-    bool overScrew (juce::Point<float>) const;
+    bool closesCase (juce::Point<float>) const;   // the screws and the three big chips
 };
 
 // the front panel
@@ -79,13 +79,23 @@ public:
     enum Key { Shift, Bank, N1, N2, N3, N4, N5, N6, N7, N8, Start, Stop,
                KAccent, KBD, KSD, KOH, KCH, KCY, KCP, kNumKeys };
     static juce::Rectangle<int> keyRect (int key);
-    static juce::Rectangle<int> lcdRect() { return { 128, 127, 487, 296 }; }
+    static juce::Rectangle<int> lcdRect() { return { 128, 129, 498, 313 }; }
     static juce::Rectangle<int> lcdCell (int row, int step);   // row 0 = accent
     void pressKey (int key, bool shiftHeld);                   // what a click on a key does
     void flash (const juce::String& message);                  // a short message in the LCD's mode box
     bool isShiftLatched() const { return shiftLatched; }
     int  getStepRow() const { return stepRow; }
     int  getBank() const { return bank; }
+
+    // the parameter-lock screen (double-click SHIFT): same LCD, one drum's locks for one setting
+    void toggleLockView() { lockView = ! lockView; shiftLatched = false; repaint(); }
+    bool isLockView() const { return lockView; }
+    int  lockVoice = 0, lockParam = 0;   // tross110::Voice, tross110::LockParam
+    static juce::Rectangle<float> lockLane();             // the bar area of the lock screen
+    void setLockFromY (int step, float y);                // what a click / drag in the lock lane does
+    juce::Rectangle<float> lockBox (int i) const;         // 0 = drum, 1 = setting, 2 = value
+    void copyPattern();
+    bool pastePattern();
 
 private:
     Tross110Processor& proc;
@@ -101,6 +111,12 @@ private:
     int bank = 0;        // A..D
     int paintRow = -1;   // LCD drag-painting
     bool paintValue = false;
+    bool lockView = false;
+    int lockPaintStep = -1, lockShownStep = -1;
+    struct Clip { bool valid = false; uint16_t rows[tross110::kNumRows] {}; float locks[tross110::kNumVoices][tross110::kNumLockParams][tross110::kNumSteps] {}; };
+    Clip clip;
+    void drawLockScreen (juce::Graphics&);
+    juce::String lockValueText (float v) const;
     juce::String message;
     juce::uint32 messageUntil = 0;
     int blink = 0, lastVersion = -1, lastStep = -2, lastSlot = -1;

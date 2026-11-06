@@ -62,7 +62,7 @@ s += [Spacer(1, 14 * mm), Paragraph('UNIT <font color="#3f7f9e">110</font>', tit
       Paragraph(f"Transistor Labs rhythm composer  ·  Owner's manual  ·  version {VERSION}", sub)]
 img = os.path.join(ROOT, "docs", "panel.png")
 if os.path.exists(img):
-    s += [Image(img, width=W, height=W * 853 / 1455), Spacer(1, 8)]
+    s += [Image(img, width=W, height=W * 908 / 1500), Spacer(1, 8)]
 s += [P("UNIT 110 is a drum machine you play like the hardware: press its keys, turn its knobs, read its LCD, and open the "
         "case to reach the trimmers inside. Six analog-style voices - bass drum, snare, hand clap, closed hat, open hat "
         "and cymbal - a global accent, and a 16-step sequencer with 32 patterns and a song mode. It runs as an Audio Unit, "
@@ -100,6 +100,9 @@ s += [Paragraph("2.1  macOS security warning", h2),
 s += [Paragraph("3  The front panel", h1),
       P("Everything works with the mouse, just like the real keys. Resize the window from its bottom-right corner. "
         "Click the TRANSISTOR LABS logo for the About window.")]
+s += [Paragraph("3.0  Opening the case", h2),
+      P("Click either <b>screw in the bottom corners</b> or the <b>ON-OFF POWER</b> lettering to open the unit (section 5). "
+        "Inside, click one of the <b>screws</b> or one of the <b>three big black chips</b> to close it again (or press Esc).")]
 s += [Paragraph("3.1  Knobs and switch", h2)]
 s += [table([
     ["Control", "What it does"],
@@ -113,7 +116,8 @@ s += [table([
 s += [Paragraph("3.2  Keys", h2)]
 s += [table([
     ["Key", "What it does"],
-    ["SHIFT", "Click it, then the next key does its upper (printed) function. Holding the computer's Shift key while clicking works too."],
+    ["SHIFT", "Click it, then the next key does its upper (printed) function. Holding the computer's Shift key while clicking works too. "
+              "<b>Double-click</b> SHIFT to switch the LCD to the P-LOCK screen (section 4.1); double-click again to go back."],
     ["A|B|C|D", "Steps through the 4 banks of 8 patterns (A1-D8). With SHIFT, or in WRITE STEP: I-II, switches between steps 1-8 and 9-16."],
     ["1 - 8", "Selects pattern 1-8 of the current bank. While playing, the new pattern starts at the next step 1 (the LCD shows NEXT)."],
     ["START / STOP", "Runs and stops the sequencer at the TEMPO knob while the host is stopped. When the host plays, UNIT 110 follows it."],
@@ -143,7 +147,20 @@ s += [Paragraph("4  The LCD", h1),
         "patterns in a row, every pattern as its own file, or the song as MIDI; copy the pattern to another slot; clear the pattern or the song. "
         "MIDI files use 16th notes on channel 10, accented steps at velocity 127."),
       P("The lower boxes show the MODE (and short messages), the PATTERN (bank letter + number, NEXT for a queued one) and the TEMPO, "
-        "the length and whether the host (HOST) or UNIT 110 itself (RUN) is playing.")]
+        "the length and whether the host (HOST) or UNIT 110 itself (RUN) is playing."),
+      P("<b>Copy / Paste:</b> right-click the LCD, choose <b>Copy pattern</b>, select another pattern with the number keys, "
+        "right-click again and choose <b>Paste pattern</b>. The steps and the parameter locks are copied. <b>Copy pattern to</b> sends it "
+        "straight to any slot.")]
+s += [Paragraph("4.1  Parameter locks (P-LOCK screen)", h2),
+      P("A parameter lock gives one step of one drum its own setting: a higher tuned snare on step 7, a longer open hat on the last step. "
+        "<b>Double-click SHIFT</b>: the LCD shows the locks of one drum for one setting, as a bar per step, and the SHIFT key stays down."),
+      P("Choose the drum by pressing its drum key (or click the DRUM box). Click the SETTING box to step through TUNE, DECAY, LEVEL and the "
+        "drum's extra (ATTACK, SNAPPY, TAIL or TONE). <b>Click or drag</b> in a step's column to set its value: top = maximum, bottom = minimum "
+        "(TUNE is centred on 0). <b>Double-click</b> (or Alt-click) a column to remove the lock: that step then follows the trimmer again. "
+        "A mark under a column shows where the drum plays. Right-click for clearing a lane, a drum or the whole pattern."),
+      Image(os.path.join(ROOT, "docs", "locks.png"), width=W * 0.62, height=W * 0.62 * 908 / 1500),
+      P("A lock holds until that drum's next hit. Locks are saved with each pattern and copied with it. Steps with locks show a small dot "
+        "in the normal pattern view.")]
 
 s += [Paragraph("5  Inside the case", h1),
       P("Click either <b>screw in the bottom corners</b> of the front panel to open the unit. The circuit board has a service trimmer for "
@@ -151,7 +168,7 @@ s += [Paragraph("5  Inside the case", h1),
         "to close the case.")]
 img = os.path.join(ROOT, "docs", "pcb.png")
 if os.path.exists(img):
-    s += [Image(img, width=W, height=W * 853 / 1455), Spacer(1, 6)]
+    s += [Image(img, width=W, height=W * 908 / 1500), Spacer(1, 6)]
 s += [table([
     ["Trimmer", "What it does"],
     ["TUNE", "Pitch, ±12 semitones. On the hats and cymbal it moves the whole metallic cluster."],

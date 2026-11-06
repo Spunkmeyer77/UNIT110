@@ -14,6 +14,14 @@ VERSION = re.search(r"project\(UNIT110 VERSION ([0-9.]+)\)", open(os.path.join(R
 OUT = os.path.join(ROOT, "docs", "UNIT110-History.pdf")
 
 HISTORY = [
+    ("1.0.2", [
+        "New parameter-lock screen: double-click SHIFT and the LCD shows one drum's locks for one setting (tune, decay, level or the "
+        "drum's extra) as a bar per step. Drag to set, double-click to clear. Double-click SHIFT again to go back.",
+        "Copy pattern / Paste pattern in the LCD's right-click menu (steps and locks).",
+        "New front panel and circuit board artwork, now exactly the same size: opening the case looks like lifting the lid.",
+        "The ON-OFF POWER lettering also opens the case; inside, the three big black chips close it, as well as the screws.",
+        "Bigger case screws on the front panel.",
+    ]),
     ("1.0.1", [
         "Fixed: the plug-in and app did not open on macOS 12 (and other versions older than the build machine). They now run on macOS 10.13 and later.",
     ]),
