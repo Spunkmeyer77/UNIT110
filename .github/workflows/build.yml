@@ -76,15 +76,15 @@ jobs:
       - name: Check minimum macOS version
         if: runner.os == 'macOS'
         run: |
-          # x86_64 should say 10.13, arm64 11.0 (the lowest Apple silicon allows). Nothing may need more than macOS 12.
+          # x86_64 should need 10.13, arm64 11.0 (the lowest Apple silicon allows). Nothing may need more than macOS 12.
           for f in "build/UNIT110_artefacts/Release/AU/UNIT 110.component/Contents/MacOS/UNIT 110" \
                    "build/UNIT110_artefacts/Release/VST3/UNIT 110.vst3/Contents/MacOS/UNIT 110" \
                    "build/UNIT110_artefacts/Release/Standalone/UNIT 110.app/Contents/MacOS/UNIT 110"; do
-            echo "== $f"; vtool -arch x86_64 -show-build "$f" | grep -E "minos|platform"; vtool -arch arm64 -show-build "$f" | grep -E "minos|platform"
-            for v in $( (vtool -arch x86_64 -show-build "$f"; vtool -arch arm64 -show-build "$f") | awk '/minos/ {print $2}'); do
+            for arch in x86_64 arm64; do
+              v=$(otool -arch $arch -l "$f" | awk '/LC_BUILD_VERSION/ {b=1} /LC_VERSION_MIN_MACOSX/ {m=1} b && $1=="minos" {print $2; exit} m && $1=="version" {print $2; exit}')
+              echo "::notice::$(basename "$(dirname "$(dirname "$(dirname "$f")")")") $arch needs macOS $v"
               major=${v%%.*}
-              if [ "$major" -gt 12 ] && [ "$major" -ne 10 ]; then echo "::error::$f needs macOS $v"; exit 1; fi
-              echo "::notice::$(basename "$f") minimum macOS $v"
+              if [ -z "$v" ] || { [ "$major" -gt 12 ] && [ "$major" -ne 10 ]; }; then echo "::error::$f $arch needs macOS $v"; exit 1; fi
             done
           done
 
