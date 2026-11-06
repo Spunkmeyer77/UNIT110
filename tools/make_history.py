@@ -14,6 +14,9 @@ VERSION = re.search(r"project\(UNIT110 VERSION ([0-9.]+)\)", open(os.path.join(R
 OUT = os.path.join(ROOT, "docs", "UNIT110-History.pdf")
 
 HISTORY = [
+    ("1.0.1", [
+        "Fixed: the plug-in and app did not open on macOS 12 (and other versions older than the build machine). They now run on macOS 10.13 and later.",
+    ]),
     ("1.0.0", [
         "First release of UNIT 110 by Transistor Labs.",
         "Hyperrealistic front panel: photographed keys that sink when pressed, turning knobs, a working POWER switch and a live LCD.",

@@ -24,7 +24,7 @@ jobs:
         include:
           - name: macOS
             os: macos-15
-            configure: -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+            configure: -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13
           - name: Windows
             os: windows-2022
             configure: ""
@@ -72,6 +72,14 @@ jobs:
         run: |
           mkdir -p test-out
           xvfb-run -a build/UNIT110Test_artefacts/Release/UNIT110Test test-out
+
+      - name: Check minimum macOS version
+        if: runner.os == 'macOS'
+        run: |
+          for f in "build/UNIT110_artefacts/Release/AU/UNIT 110.component/Contents/MacOS/UNIT 110" \
+                   "build/UNIT110_artefacts/Release/VST3/UNIT 110.vst3/Contents/MacOS/UNIT 110"; do
+            vtool -show-build "$f" | tee /dev/stderr | grep -E "minos 10\.13" > /dev/null || { echo "::error::$f does not target macOS 10.13"; exit 1; }
+          done
 
       - name: Validate Audio Unit (macOS)
         if: runner.os == 'macOS'
