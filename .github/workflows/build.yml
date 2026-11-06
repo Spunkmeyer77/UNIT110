@@ -23,7 +23,7 @@ jobs:
       matrix:
         include:
           - name: macOS
-            os: macos-15
+            os: macos-15-intel
             configure: -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13
           - name: Windows
             os: windows-2022
