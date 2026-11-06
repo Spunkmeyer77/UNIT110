@@ -9,7 +9,7 @@
 // panel image's own pixels (kDesignW x kDesignH) and scaled to the window.
 namespace unit110ui
 {
-constexpr int kDesignW = 1500, kDesignH = 908;
+constexpr int kDesignW = 1502, kDesignH = 922;
 
 // a knob or trimmer drawn from an image (or by hand) that turns with its value
 struct KnobLook : juce::LookAndFeel_V4
@@ -79,9 +79,9 @@ public:
     enum Key { Shift, Bank, N1, N2, N3, N4, N5, N6, N7, N8, Start, Stop,
                KAccent, KBD, KSD, KOH, KCH, KCY, KCP, kNumKeys };
     static juce::Rectangle<int> keyRect (int key);
-    static juce::Rectangle<int> lcdRect() { return { 128, 129, 498, 313 }; }
+    static juce::Rectangle<int> lcdRect() { return { 129, 134, 499, 317 }; }
     static juce::Rectangle<int> lcdCell (int row, int step);   // row 0 = accent
-    void pressKey (int key, bool shiftHeld);                   // what a click on a key does
+    void pressKey (int key, bool shiftHeld, bool altHeld = false);   // what a click on a key does
     void flash (const juce::String& message);                  // a short message in the LCD's mode box
     bool isShiftLatched() const { return shiftLatched; }
     int  getStepRow() const { return stepRow; }
@@ -116,6 +116,16 @@ private:
     struct Clip { bool valid = false; uint16_t rows[tross110::kNumRows] {}; float locks[tross110::kNumVoices][tross110::kNumLockParams][tross110::kNumSteps] {}; };
     Clip clip;
     void drawLockScreen (juce::Graphics&);
+    void drawPanelPrint (juce::Graphics&);
+    void drawKeyLegend (juce::Graphics&, int key, float dy);
+    juce::Rectangle<float> lcdBox (int i) const;   // MODE | PATTERN | TEMPO
+    bool tempoDragging = false; float tempoDragStart = 120.0f;
+    struct MenuLook : juce::LookAndFeel_V4
+    {
+        juce::Font getPopupMenuFont() override;
+    } menuLook;
+    bool drumFlag (int voice, const char* suffix) const;
+    void toggleDrumFlag (int voice, const char* suffix);
     juce::String lockValueText (float v) const;
     juce::String message;
     juce::uint32 messageUntil = 0;

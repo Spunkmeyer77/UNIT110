@@ -14,6 +14,16 @@ VERSION = re.search(r"project\(UNIT110 VERSION ([0-9.]+)\)", open(os.path.join(R
 OUT = os.path.join(ROOT, "docs", "UNIT110-History.pdf")
 
 HISTORY = [
+    ("1.0.3", [
+        "Sharp panel: all lettering, numbers, key legends and icons are now drawn as vector graphics, crisp at any window size.",
+        "Spelling: BASS DRUM, DC.",
+        "The TEMPO knob is now SWING (STRAIGHT to SHUFFLE, 50-75 %). MIDI export swings too.",
+        "UNIT 110 always follows the DAW tempo; START / STOP with the DAW stopped also use it. In the standalone app the tempo is set by "
+        "dragging the TEMPO box on the LCD.",
+        "Mute with SHIFT + drum key, solo with Option (Alt) + drum key; the LCD shows M / S.",
+        "The drum keys' right-click menu now holds only Own output. Right-click menus are larger.",
+        "Checked: runs on macOS 10.13 and later (11 on Apple silicon), including macOS 12.",
+    ]),
     ("1.0.2", [
         "New parameter-lock screen: double-click SHIFT and the LCD shows one drum's locks for one setting (tune, decay, level or the "
         "drum's extra) as a bar per step. Drag to set, double-click to clear. Double-click SHIFT again to go back.",

@@ -121,7 +121,7 @@ private:
         std::atomic<float>* ownOut[tross110::kNumVoices];
         std::atomic<float> *bdAttack, *sdSnappy, *cpTail, *cyTone, *accent, *master,
                            *seqOn, *seqLen, *pattern, *rec,
-                           *tempo, *balance, *accDrive, *accDecay, *power;
+                           *tempo, *balance, *accDrive, *accDecay, *power, *swing;
     } raw {};
 
     void pullParams();

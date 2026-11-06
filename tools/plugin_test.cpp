@@ -370,13 +370,37 @@ int main (int argc, char** argv)
     {
         host.playing = false; run (2);
         auto setP = [&] (const char* id, float v) { auto* p = proc.apvts.getParameter (id); p->setValueNotifyingHost (p->convertTo0to1 (v)); };
-        setP ("tempo", 150.0f);
+        host.bpm = 150.0;
         proc.internalPlay = true;
         int steps = 0, prev = -1;
         for (int b = 0; b < 200; ++b) { run (1); const int st = proc.getPlayStep(); if (st >= 0 && st != prev) { ++steps; prev = st; } }
         // 2 s at 150 BPM = 20 sixteenths
         check (steps >= 19 && steps <= 21 && std::abs (proc.currentBpm.load() - 150.0) < 0.01,
-               ("START runs the sequencer on the TEMPO knob (" + juce::String (steps) + " steps in 2 s at 150 BPM)").toRawUTF8());
+               ("START with the DAW stopped runs at the DAW's tempo (" + juce::String (steps) + " steps in 2 s at 150 BPM)").toRawUTF8());
+        proc.internalPlay = false; run (2); host.bpm = 120.0;
+        // SWING 75 %: the second 16th of each pair lands half a 16th late
+        {
+            setP ("swing", 75.0f);
+            for (int r = 0; r < tross110::kNumRows; ++r) proc.patterns.set (proc.getCurrentSlot(), r, 0);
+            host.ppq = 0.0; host.playing = true;
+            std::vector<double> at;
+            int last = -1;
+            for (int b = 0; b < 100; ++b)
+            {
+                run (1);
+                const int st = proc.getPlayStep();
+                if (st != last && st >= 0 && st <= 3) at.push_back (host.ppq * 4.0);
+                last = st;
+            }
+            host.playing = false; run (2);
+            // steps 0..3 at 16th positions 0, 1.5, 2, 3.5 (one block of slack)
+            const double slack = block / sr * host.bpm / 60.0 * 4.0 + 1e-6;
+            check (at.size() >= 4 && std::abs (at[1] - 1.5) <= slack && std::abs (at[2] - 2.0) <= slack && std::abs (at[3] - 3.5) <= slack,
+                   "SWING 75 % delays every second 16th by half a 16th");
+            setP ("swing", 50.0f);
+            auto mf = tross110::MidiExport::make (proc.patterns, { 0 }, 16, 120.0, "x", 75.0);
+            juce::ignoreUnused (mf);
+        }
         host.playing = true; run (2);
         check (! proc.internalPlay.load() && proc.isHostPlaying(), "host playback takes over from START");
         host.playing = false; run (2);
@@ -455,6 +479,17 @@ int main (int argc, char** argv)
         fp.pressKey (FrontPanel::N4, false); run (1);
         check (fp.pastePattern() && pats.cell (3, 1, 0) && pats.cell (3, 1, 8), "copy A1, paste into A4");
         fp.pressKey (FrontPanel::N1, false); run (1);
+        // SHIFT + drum = mute, Option + drum = solo
+        fp.pressKey (FrontPanel::KSD, true);
+        check (proc.apvts.getRawParameterValue ("sd_mute")->load() > 0.5f, "SHIFT + SNARE mutes the snare");
+        fp.pressKey (FrontPanel::KSD, true);
+        fp.pressKey (FrontPanel::KCP, false, true);
+        check (proc.apvts.getRawParameterValue ("cp_solo")->load() > 0.5f && proc.apvts.getRawParameterValue ("sd_mute")->load() < 0.5f,
+               "Option + CLAP solos the clap; SHIFT + SNARE again unmutes");
+        fp.pressKey (FrontPanel::KCH, true);
+        snap ("editor_mute_solo.png");
+        fp.pressKey (FrontPanel::KCH, true);
+        fp.pressKey (FrontPanel::KCP, false, true);
         fp.toggleLockView();
         check (fp.isLockView(), "double-click SHIFT shows the P-LOCK screen");
         fp.pressKey (FrontPanel::KBD, false);

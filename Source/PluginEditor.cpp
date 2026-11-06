@@ -276,7 +276,11 @@ PcbView::PcbView (Tross110Processor& p, Tross110Editor& ed) : proc (p), editor (
     add ("cp_tail",   groupX (6) + 112.0f, 741.0f, true);
 }
 
-juce::Point<float> PcbView::toView (float x, float y) const { return { xOff + x * scale, y * scale }; }
+// board positions were measured on the 1.0.2 layout; this moves them onto the current artwork
+juce::Point<float> PcbView::toView (float x, float y) const
+{
+    return { 10.0f + (x - 10.0f) * 1.002028f, 18.0f + (y - 14.0f) * 1.013575f };
+}
 
 void PcbView::paint (juce::Graphics& g)
 {
@@ -288,7 +292,9 @@ void PcbView::paint (juce::Graphics& g)
 bool PcbView::closesCase (juce::Point<float> p) const
 {
     for (auto s : kBoardScrews) if (p.getDistanceFrom (toView (s.x, s.y)) < 16.0f) return true;
-    for (auto c : kBoardChips) if (c.contains (p)) return true;
+    for (auto c : kBoardChips)
+        if (juce::Rectangle<float>::leftTopRightBottom (toView (c.getX(), c.getY()).x, toView (c.getX(), c.getY()).y,
+                                                        toView (c.getRight(), c.getBottom()).x, toView (c.getRight(), c.getBottom()).y).contains (p)) return true;
     return false;
 }
 
@@ -306,33 +312,34 @@ void PcbView::mouseUp (const juce::MouseEvent& e)
 // front panel
 juce::Rectangle<int> FrontPanel::keyRect (int key)
 {
-    static const int numX[8] = { 356, 449, 542, 635, 729, 823, 917, 1011 };
-    static const int numY[8] = { 571, 570, 572, 574, 574, 575, 576, 577 };
+    static const int numX[8] = { 357, 450, 544, 636, 730, 824, 919, 1013 };
+    static const int numY[8] = { 582, 582, 584, 585, 586, 587, 588, 589 };
     switch (key)
     {
-        case Shift:   return { 90, 569, 104, 80 };
-        case Bank:    return { 262, 570, 48, 80 };
-        case Start:   return { 1122, 555, 106, 105 };
-        case Stop:    return { 1299, 556, 107, 105 };
-        case KAccent: return { 89, 718, 136, 88 };
-        case KBD:     return { 283, 719, 136, 89 };
-        case KSD:     return { 479, 722, 133, 88 };
-        case KOH:     return { 674, 724, 132, 89 };
-        case KCH:     return { 869, 726, 135, 89 };
-        case KCY:     return { 1066, 729, 137, 89 };
-        case KCP:     return { 1266, 730, 140, 90 };
+        case Shift:   return { 90, 580, 104, 82 };
+        case Bank:    return { 262, 582, 49, 81 };
+        case Start:   return { 1124, 566, 107, 107 };
+        case Stop:    return { 1301, 567, 108, 106 };
+        case KAccent: return { 89, 732, 136, 89 };
+        case KBD:     return { 283, 733, 137, 90 };
+        case KSD:     return { 479, 736, 135, 89 };
+        case KOH:     return { 675, 738, 133, 90 };
+        case KCH:     return { 871, 740, 135, 90 };
+        case KCY:     return { 1068, 743, 137, 89 };
+        case KCP:     return { 1268, 744, 140, 91 };
         default:      break;
     }
-    if (key >= N1 && key <= N8) return { numX[key - N1], numY[key - N1], 48, 80 };
+    if (key >= N1 && key <= N8) return { numX[key - N1], numY[key - N1], 49, 81 };
     return {};
 }
 
 namespace
 {
 constexpr float kLabelW = 78.0f, kTopRow = 24.0f, kRowH = 22.5f;
-const juce::Point<float> kFrontScrews[] = { { 44, 858 }, { 1456, 858 } };
-const juce::Rectangle<int> kLogo { 100, 45, 360, 66 }, kPowerSwitch { 1238, 0, 76, 46 }, kPowerText { 1255, 55, 92, 42 },
-                           kPowerTab { 1253, 15, 40, 10 };
+const juce::Point<float> kFrontScrews[] = { { 44, 874 }, { 1458, 874 } };
+const juce::Rectangle<int> kLogo { 100, 50, 362, 68 }, kPowerSwitch { 1240, 0, 76, 52 }, kPowerText { 1256, 62, 92, 44 },
+                           kPowerTab { 1254, 19, 42, 11 };
+const juce::Point<int> kKnobCentre[4] = { { 902, 306 }, { 1057, 306 }, { 1219, 307 }, { 1380, 309 } };
 }
 
 juce::Rectangle<int> FrontPanel::lcdCell (int row, int step)
@@ -346,12 +353,11 @@ FrontPanel::FrontPanel (Tross110Processor& p, Tross110Editor& ed) : proc (p), ed
 {
     panel = juce::ImageCache::getFromMemory (BinaryData::panel_png, BinaryData::panel_pngSize);
     knobLook.knob = juce::ImageCache::getFromMemory (BinaryData::knob_png, BinaryData::knob_pngSize);
-    const char* ids[4] = { "tempo", "balance", "accent", "master" };
-    const int cx[4] = { 899, 1056, 1216, 1376 }, cy[4] = { 297, 300, 302, 302 };
+    const char* ids[4] = { "swing", "balance", "accent", "master" };
     for (int i = 0; i < 4; ++i)
     {
         auto* k = knobs.add (new Knob (proc.apvts, ids[i], knobLook, kKnobStart, kKnobEnd));
-        k->setBounds (juce::Rectangle<int> (124, 124).withCentre ({ cx[i], cy[i] }));
+        k->setBounds (juce::Rectangle<int> (124, 124).withCentre (kKnobCentre[i]));
         addAndMakeVisible (k);
     }
     bank = proc.getCurrentSlot() / 8;
@@ -429,16 +435,373 @@ void FrontPanel::paint (juce::Graphics& g)
         const auto tab = panel.getClippedImage (kPowerTab);
         g.setColour (juce::Colours::black);
         g.fillRect (kPowerTab.withTrimmedBottom (3));
-        g.drawImageAt (tab, kPowerTab.getX() + 32, kPowerTab.getY());
+        g.drawImageAt (tab, kPowerTab.getX() + 34, kPowerTab.getY());
     }
 
+    drawPanelPrint (g);
     drawLcd (g);
 
-    if (heldKey >= 0) drawKeyPressed (g, keyRect (heldKey));
-    if ((shiftLatched || lockView) && heldKey != Shift) drawKeyPressed (g, keyRect (Shift));
-    if (accentArmed && heldKey != KAccent) drawKeyPressed (g, keyRect (KAccent));
+    for (int k = 0; k < kNumKeys; ++k)
+    {
+        const bool down = k == heldKey || (k == Shift && (shiftLatched || lockView)) || (k == KAccent && accentArmed);
+        if (down) drawKeyPressed (g, keyRect (k));
+        drawKeyLegend (g, k, down ? 2.0f : 0.0f);
+    }
 
     for (auto s : kFrontScrews) drawScrew (g, s);
+}
+
+// ---- the panel print, drawn as vector text over the text-free photo ---------------------------
+namespace
+{
+const juce::Colour kPrintInk (0xff26282c), kKeyInk (0xfff1f5f6), kLogoInk (0xffc4c8c8);
+
+// positions were measured on the original (printed) render; map them onto this artwork
+juce::Rectangle<float> O (float x, float y, float w, float h)
+{
+    constexpr float fx = 1482.0f / 1479.0f, fy = 896.0f / 884.0f;
+    return { 10.0f + (x - 206.0f) * fx, 18.0f + (y - 252.0f) * fy, w * fx, h * fy };
+}
+
+// text whose capitals fill the box height; squeezed or stretched (a little) to the box width when fit = true
+void print (juce::Graphics& g, const juce::String& t, juce::Rectangle<float> box, juce::Colour c, bool fit = true,
+            juce::Justification j = juce::Justification::centred, bool bold = true, bool italic = false, const juce::String& face = {})
+{
+    auto f = juce::Font (juce::FontOptions (face.isEmpty() ? juce::Font::getDefaultSansSerifFontName() : face, box.getHeight() / 0.72f,
+                                            (bold ? juce::Font::bold : 0) | (italic ? juce::Font::italic : 0)));
+    if (fit)
+    {
+        const float w = juce::GlyphArrangement::getStringWidth (f, t);
+        if (w > 0) f.setHorizontalScale (juce::jlimit (0.7f, 1.25f, box.getWidth() / w));
+    }
+    else
+    {
+        const float w = juce::GlyphArrangement::getStringWidth (f, t);
+        if (w > box.getWidth() * 1.15f) f.setHorizontalScale (box.getWidth() * 1.15f / w);
+    }
+    g.setColour (c);
+    g.setFont (f);
+    // centre the capitals (not the whole line) on the box
+    const float asc = f.getAscent(), capH = box.getHeight();
+    auto line = juce::Rectangle<float> (box.getX() - 40.0f, box.getBottom() - asc, box.getWidth() + 80.0f, f.getHeight());
+    juce::ignoreUnused (capH);
+    g.drawText (t, j == juce::Justification::centred ? line : line.withX (j.testFlags (juce::Justification::left) ? box.getX() : box.getRight() - line.getWidth()).withWidth (line.getWidth()),
+                j.getOnlyHorizontalFlags() | juce::Justification::top, false);
+}
+
+void drawArrow (juce::Graphics& g, float x0, float x1, float y, bool left)
+{
+    juce::Path a;
+    const float h = 7.0f, head = 9.0f;
+    if (left)
+    {
+        a.addTriangle (x0, y, x0 + head, y - h, x0 + head, y + h);
+        a.addRectangle (x0 + head - 1.0f, y - 3.2f, x1 - x0 - head + 1.0f, 6.4f);
+    }
+    else
+    {
+        a.addTriangle (x1, y, x1 - head, y - h, x1 - head, y + h);
+        a.addRectangle (x0, y - 3.2f, x1 - x0 - head + 1.0f, 6.4f);
+    }
+    g.fillPath (a);
+}
+}
+
+void FrontPanel::drawPanelPrint (juce::Graphics& g)
+{
+    // logo + model on the black surround
+    {
+        const auto box = O (293, 284, 62, 64);
+        juce::Path hp;
+        hp.addPolygon (box.getCentre(), 6, box.getHeight() * 0.48f, 0.0f);
+        g.setColour (kLogoInk);
+        g.strokePath (hp, juce::PathStrokeType (4.2f, juce::PathStrokeType::curved));
+        print (g, "TR", box.withSizeKeepingCentre (34, 24), kLogoInk, true, juce::Justification::centred, false);
+        print (g, "TRANSISTOR LABS", O (366, 301, 275, 29), kLogoInk, true, juce::Justification::centred, false);
+        print (g, "UNIT110", O (694, 309, 157, 32), kLogoInk);
+    }
+    // top edge
+    print (g, "ACC TRIG OUT", O (1105, 302, 140, 17), kPrintInk);
+    print (g, "DC 9V", O (1303, 302, 63, 17), kPrintInk);
+    print (g, "ON-OFF", O (1466, 299, 56, 11), kPrintInk);
+    print (g, "POWER", O (1461, 314, 70, 15), kPrintInk);
+
+    // knobs: names, ticks, scales
+    print (g, "SWING", O (1052, 430, 87, 24), kPrintInk, false);
+    print (g, "BALANCE", O (1187, 431, 133, 24), kPrintInk);
+    print (g, "ACCENT", O (1355, 431, 118, 25), kPrintInk);
+    print (g, "VOLUME", O (1514, 433, 122, 25), kPrintInk);
+    print (g, "0", O (1245, 461, 16, 19), kPrintInk, false);
+    print (g, "5", O (1406, 462, 15, 19), kPrintInk, false);
+    print (g, "5", O (1567, 463, 15, 19), kPrintInk, false);
+    print (g, "STRAIGHT", O (998, 589, 84, 16), kPrintInk, false);
+    print (g, "SHUFFLE", O (1112, 589, 72, 16), kPrintInk, false);
+    print (g, "5", O (1213, 587, 14, 19), kPrintInk, false);
+    print (g, "5", O (1280, 587, 14, 19), kPrintInk, false);
+    print (g, "0", O (1372, 588, 16, 19), kPrintInk, false);
+    print (g, "10", O (1434, 589, 32, 19), kPrintInk, false);
+    print (g, "0", O (1533, 589, 16, 19), kPrintInk, false);
+    print (g, "10", O (1596, 590, 33, 19), kPrintInk, false);
+    g.setColour (kPrintInk);
+    for (int k = 0; k < 4; ++k)
+    {
+        const auto c = kKnobCentre[k].toFloat();
+        for (int t = 0; t <= 10; ++t)
+        {
+            if (t == 5 && k > 0) continue;   // BALANCE / ACCENT / VOLUME have a number at the top instead
+            const float a = juce::degreesToRadians (-135.0f + 27.0f * (float) t);
+            const float r0 = (t == 5 ? 61.0f : 63.0f), r1 = (t == 5 ? 76.0f : 73.0f);
+            g.drawLine (c.x + std::sin (a) * r0, c.y - std::cos (a) * r0, c.x + std::sin (a) * r1, c.y - std::cos (a) * r1, 2.4f);
+        }
+    }
+
+    // function labels above the number keys
+    print (g, juce::String::fromUTF8 ("I\xc2\xb7II"), O (468, 767, 27, 14), kPrintInk, false);
+    print (g, "PLAY", O (601, 747, 40, 15), kPrintInk, false);
+    print (g, "SONG", O (545, 767, 58, 15), kPrintInk);
+    print (g, "PATTERN", O (623, 768, 88, 15), kPrintInk);
+    print (g, "WRITE", O (826, 750, 57, 15), kPrintInk, false);
+    print (g, "SONG", O (732, 769, 59, 15), kPrintInk);
+    print (g, "STEP", O (828, 770, 53, 15), kPrintInk);
+    print (g, "TAP", O (928, 771, 40, 15), kPrintInk);
+    print (g, "PATTERN", O (1093, 755, 88, 15), kPrintInk);
+    print (g, "MEASURE", O (1184, 756, 97, 15), kPrintInk);
+    print (g, "CLEAR", O (1104, 773, 69, 15), kPrintInk);
+    print (g, "RESET", O (1198, 774, 70, 15), kPrintInk);
+    {
+        // 12/16 as a stacked fraction
+        print (g, "12", O (1021, 753, 22, 14), kPrintInk, false);
+        print (g, "16", O (1041, 773, 25, 14), kPrintInk, false);
+        const auto a = O (1030, 789, 0, 0).getPosition(), b = O (1058, 754, 0, 0).getPosition();
+        g.setColour (kPrintInk);
+        g.drawLine (a.x, a.y, b.x, b.y, 2.0f);
+    }
+    {
+        // the PLAY and WRITE brackets
+        g.setColour (kPrintInk);
+        auto bracket = [&g] (juce::Rectangle<float> l, juce::Rectangle<float> r)
+        {
+            g.drawLine (l.getX(), l.getY(), l.getRight(), l.getY(), 1.8f);
+            g.drawLine (l.getX(), l.getY() - 0.9f, l.getX(), l.getY() + 7.0f, 1.8f);
+            g.drawLine (r.getX(), r.getY(), r.getRight(), r.getY(), 1.8f);
+            g.drawLine (r.getRight(), r.getY() - 0.9f, r.getRight(), r.getY() + 7.0f, 1.8f);
+        };
+        bracket (O (572, 754, 25, 0), O (645, 754, 25, 0));
+        bracket (O (757, 757, 63, 0), O (891, 757, 62, 0));
+    }
+
+    // above the drum keys
+    print (g, "DOWN", O (498, 921, 56, 15), kPrintInk);
+    print (g, "MEASURE", O (598, 921, 95, 15), kPrintInk);
+    print (g, "UP", O (734, 921, 25, 15), kPrintInk);
+    g.setColour (kPrintInk);
+    {
+        const auto l = O (559, 928, 34, 0), r = O (697, 928, 32, 0);
+        drawArrow (g, l.getX(), l.getRight(), l.getY(), true);
+        drawArrow (g, r.getX(), r.getRight(), r.getY(), false);
+    }
+    print (g, "ENTER", O (904, 925, 66, 15), kPrintInk);
+    print (g, "DC", O (1114, 928, 38, 15), kPrintInk, false, juce::Justification::centred, true, true, juce::Font::getDefaultSerifFontName());
+
+    // drum names
+    print (g, "ACCENT", O (298, 1060, 113, 22), kPrintInk);
+    print (g, "BASS DRUM", O (466, 1062, 164, 22), kPrintInk);
+    print (g, "SNARE DRUM", O (652, 1065, 179, 22), kPrintInk);
+    print (g, "O.HIHAT", O (881, 1067, 111, 22), kPrintInk);
+    print (g, "C.HIHAT", O (1077, 1071, 111, 22), kPrintInk);
+    print (g, "CYMBAL", O (1274, 1074, 115, 22), kPrintInk);
+    print (g, "HAND CLAP", O (1451, 1076, 162, 22), kPrintInk);
+}
+
+// a 7-segment digit, slanted like the keys' print
+static void sevenSeg (juce::Graphics& g, int digit, juce::Rectangle<float> r)
+{
+    static const int segs[10] = { 0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f };   // a b c d e f g
+    const float w = r.getWidth(), h = r.getHeight(), t = juce::jmax (2.6f, w * 0.17f), slant = 0.12f;
+    auto P = [&] (float x, float y) { return juce::Point<float> (r.getX() + x + (h - y) * slant, r.getY() + y); };
+    auto seg = [&] (juce::Point<float> a, juce::Point<float> b)
+    {
+        juce::Path p;
+        p.startNewSubPath (a); p.lineTo (b);
+        g.strokePath (p, juce::PathStrokeType (t, juce::PathStrokeType::mitered, juce::PathStrokeType::butt));
+    };
+    const float x0 = t * 0.5f, x1 = w - h * slant - t * 0.5f, y0 = t * 0.5f, ym = h * 0.5f, y1 = h - t * 0.5f, gap = t * 0.55f;
+    const int m = segs[juce::jlimit (0, 9, digit)];
+    if (m & 0x01) seg (P (x0 + gap, y0), P (x1 - gap, y0));
+    if (m & 0x02) seg (P (x1, y0 + gap), P (x1, ym - gap));
+    if (m & 0x04) seg (P (x1, ym + gap), P (x1, y1 - gap));
+    if (m & 0x08) seg (P (x0 + gap, y1), P (x1 - gap, y1));
+    if (m & 0x10) seg (P (x0, ym + gap), P (x0, y1 - gap));
+    if (m & 0x20) seg (P (x0, y0 + gap), P (x0, ym - gap));
+    if (m & 0x40) seg (P (x0 + gap, ym), P (x1 - gap, ym));
+}
+
+void FrontPanel::drawKeyLegend (juce::Graphics& g, int key, float dy)
+{
+    const auto r = keyRect (key).toFloat().translated (0, dy);
+    const auto c = r.getCentre();
+    g.setColour (kKeyInk);
+    const juce::PathStrokeType line (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded);
+    switch (key)
+    {
+        case Shift: print (g, "SHIFT", r.withSizeKeepingCentre (60, 15), kKeyInk, false); break;
+        case Bank:
+        {
+            const auto b = r.withSizeKeepingCentre (26, 30);
+            g.drawLine (b.getCentreX(), b.getY(), b.getCentreX(), b.getBottom(), 1.6f);
+            g.drawLine (b.getX(), b.getCentreY(), b.getRight(), b.getCentreY(), 1.6f);
+            const char* l[4] = { "A", "B", "C", "D" };
+            for (int i = 0; i < 4; ++i)
+                print (g, l[i], juce::Rectangle<float> (b.getX() + (i % 2) * 13.0f + 2.5f, b.getY() + (i / 2) * 15.0f + 3.5f, 8.0f, 8.5f), kKeyInk, false);
+            break;
+        }
+        case Start:
+            g.fillEllipse (juce::Rectangle<float> (21, 21).withCentre (c.translated (0, -17)));
+            print (g, "START", juce::Rectangle<float> (80, 17).withCentre (c.translated (0, 14)), kKeyInk, false);
+            break;
+        case Stop:
+            g.drawEllipse (juce::Rectangle<float> (20, 20).withCentre (c.translated (0, -17)), 2.6f);
+            print (g, "STOP", juce::Rectangle<float> (70, 17).withCentre (c.translated (0, 14)), kKeyInk, false);
+            break;
+        case KAccent:
+        {
+            // signal waves rising from a dot
+            const auto o = c.translated (0, 16);
+            g.fillEllipse (juce::Rectangle<float> (11, 11).withCentre (o));
+            for (int i = 1; i <= 3; ++i)
+            {
+                juce::Path a;
+                const float rr = 9.0f + 10.0f * (float) i;
+                a.addCentredArc (o.x, o.y, rr, rr, 0.0f, -1.0f, 1.0f, true);
+                g.strokePath (a, line);
+            }
+            break;
+        }
+        case KBD:
+        {
+            // bass drum seen from the side: shell + front head + beater
+            const auto b = r.withSizeKeepingCentre (64, 56);
+            juce::Path p;
+            p.addEllipse (b.getX() + 18, b.getY(), 36, 56);
+            g.strokePath (p, line);
+            juce::Path shell;
+            shell.startNewSubPath (b.getX() + 36, b.getY());
+            shell.quadraticTo (b.getX(), b.getY() + 4, b.getX() + 2, b.getCentreY());
+            shell.quadraticTo (b.getX(), b.getBottom() - 4, b.getX() + 36, b.getBottom());
+            g.strokePath (shell, line);
+            g.drawLine (b.getX() + 36, b.getCentreY() + 4, b.getX() + 36, b.getBottom() - 10, 3.0f);
+            g.fillEllipse (juce::Rectangle<float> (11, 11).withCentre ({ b.getX() + 36, b.getCentreY() + 2 }));
+            break;
+        }
+        case KSD:
+        {
+            const auto b = r.withSizeKeepingCentre (76, 44);
+            juce::Path p;
+            p.addEllipse (b.getX(), b.getY(), b.getWidth(), 16);
+            p.startNewSubPath (b.getX(), b.getY() + 8); p.lineTo (b.getX(), b.getBottom() - 8);
+            p.addCentredArc (b.getCentreX(), b.getBottom() - 8, b.getWidth() * 0.5f, 8, 0, -juce::MathConstants<float>::halfPi, juce::MathConstants<float>::halfPi, false);
+            p.lineTo (b.getRight(), b.getY() + 8);
+            for (int i = 1; i <= 2; ++i)
+            {
+                const float y = b.getY() + 8 + i * 9.0f;
+                p.addCentredArc (b.getCentreX(), y, b.getWidth() * 0.5f, 8, 0, -juce::MathConstants<float>::halfPi, juce::MathConstants<float>::halfPi, true);
+            }
+            g.strokePath (p, juce::PathStrokeType (2.4f));
+            break;
+        }
+        case KOH: case KCH: case KCY:
+        {
+            auto cym = [&] (float y, bool flipUp)
+            {
+                juce::Path p;
+                const float w = 36.0f;
+                p.startNewSubPath (c.x - w, y);
+                p.quadraticTo (c.x - 10, y + (flipUp ? -3.0f : 3.0f), c.x - 5, y + (flipUp ? -9.0f : 9.0f));
+                p.lineTo (c.x + 5, y + (flipUp ? -9.0f : 9.0f));
+                p.quadraticTo (c.x + 10, y + (flipUp ? -3.0f : 3.0f), c.x + w, y);
+                p.closeSubPath();
+                g.strokePath (p, juce::PathStrokeType (2.6f));
+            };
+            if (key == KOH)
+            {
+                g.drawLine (c.x, c.y - 26, c.x, c.y + 26, 2.6f);
+                cym (c.y - 8, true);
+                cym (c.y + 10, false);
+            }
+            else if (key == KCH)
+            {
+                g.drawLine (c.x, c.y - 20, c.x, c.y + 20, 2.6f);
+                cym (c.y, true);
+                cym (c.y, false);
+            }
+            else
+            {
+                juce::Path p;
+                p.startNewSubPath (c.x - 46, c.y - 6);
+                p.quadraticTo (c.x - 10, c.y - 14, c.x, c.y - 20);
+                p.quadraticTo (c.x + 10, c.y - 14, c.x + 46, c.y - 6);
+                g.strokePath (p, juce::PathStrokeType (3.0f));
+                g.drawLine (c.x, c.y - 20, c.x, c.y + 28, 3.0f);
+            }
+            break;
+        }
+        case KCP:
+        {
+            // two raised hands and clap lines
+            auto hand = [&] (float x0, float lean)
+            {
+                juce::Path p;
+                const float base = c.y + 26;
+                p.startNewSubPath (x0, base);
+                p.lineTo (x0 - 2 + lean, c.y + 2);
+                for (int f = 0; f < 4; ++f)
+                {
+                    const float fx = x0 - 2 + lean + f * 6.5f, top = c.y - 22 + std::abs (1.5f - (float) f) * 4.0f;
+                    p.lineTo (fx, top + 3);
+                    p.quadraticTo (fx + 3.2f, top - 3, fx + 6.4f, top + 3);
+                    p.lineTo (fx + 6.4f, c.y - 2);
+                }
+                p.lineTo (x0 + 28 + lean, c.y + 4);
+                p.lineTo (x0 + 26, base);
+                g.strokePath (p, juce::PathStrokeType (2.2f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+            };
+            hand (c.x - 18, -2.0f);
+            hand (c.x - 4, 2.0f);
+            for (int i = 0; i < 3; ++i)
+            {
+                const float y = c.y - 14 + i * 12.0f;
+                g.drawLine (c.x - 44, y + (i - 1) * 3.0f, c.x - 32, y, 2.2f);
+            }
+            break;
+        }
+        default:
+            if (key >= N1 && key <= N8) sevenSeg (g, key - N1 + 1, r.withSizeKeepingCentre (20, 40).translated (-1, 0));
+            break;
+    }
+}
+
+juce::Rectangle<float> FrontPanel::lcdBox (int i) const
+{
+    const auto glass = lcdRect().toFloat();
+    const float by = glass.getY() + kTopRow + kRowH * kNumRows + 7.0f, bh = glass.getBottom() - 6.0f - by;
+    if (i == 0) return { glass.getX() + 6.0f, by, 244.0f, bh };
+    if (i == 1) return { glass.getX() + 256.0f, by, 116.0f, bh };
+    return { glass.getX() + 378.0f, by, glass.getWidth() - 386.0f, bh };
+}
+
+juce::Font FrontPanel::MenuLook::getPopupMenuFont() { return font (17.0f, false); }
+
+bool FrontPanel::drumFlag (int voice, const char* suffix) const
+{
+    static const char* ids[kNumVoices] = { "bd", "sd", "cp", "ch", "oh", "cy" };
+    return proc.apvts.getRawParameterValue (juce::String (ids[voice]) + suffix)->load() > 0.5f;
+}
+
+void FrontPanel::toggleDrumFlag (int voice, const char* suffix)
+{
+    static const char* ids[kNumVoices] = { "bd", "sd", "cp", "ch", "oh", "cy" };
+    auto* p = proc.apvts.getParameter (juce::String (ids[voice]) + suffix);
+    p->setValueNotifyingHost (p->getValue() > 0.5f ? 0.0f : 1.0f);
 }
 
 void FrontPanel::drawLcd (juce::Graphics& g)
@@ -486,12 +849,27 @@ void FrontPanel::drawLcd (juce::Graphics& g)
             tri.addTriangle (gridArea.getX() + 3, y + 6, gridArea.getX() + 3, y + kRowH - 6, gridArea.getX() + 8, y + kRowH * 0.5f);
             g.fillPath (tri);
         }
-        g.drawText (kRowNames[r], juce::Rectangle<float> (gridArea.getX() + 10.0f, y, kLabelW - 14.0f, kRowH), juce::Justification::centredLeft);
+        // mute / solo: M or S after the name; silenced rows go faint, a muted name blinks
+        bool anySolo = false;
+        for (int v = 0; v < kNumVoices; ++v) anySolo = anySolo || drumFlag (v, "_solo");
+        const bool muted = r > 0 && drumFlag (r - 1, "_mute"), soloed = r > 0 && drumFlag (r - 1, "_solo");
+        const bool silent = r > 0 && (soloed ? false : (muted || anySolo));
+        const auto nameBox = juce::Rectangle<float> (gridArea.getX() + 10.0f, y, kLabelW - 14.0f, kRowH);
+        if (! (muted && (blink / 8) % 2))
+            g.drawText (kRowNames[r], nameBox, juce::Justification::centredLeft);
+        if (soloed || muted)
+        {
+            const auto tag = juce::Rectangle<float> (nameBox.getRight() - 12.0f, y + 4.0f, 12.0f, kRowH - 8.0f);
+            g.fillRect (tag);
+            g.setColour (lcdGlass);
+            g.drawText (soloed ? "S" : "M", tag, juce::Justification::centred);
+            g.setColour (ink());
+        }
         for (int s = 0; s < kNumSteps; ++s)
         {
             const auto cell = juce::Rectangle<float> (x0 + s * cw, y, cw, kRowH);
             const bool on = proc.patterns.cell (slot, r, s);
-            g.setColour (on ? ink (s < length ? 0.88f : 0.3f) : ghost);
+            g.setColour (on ? ink (silent ? 0.22f : (s < length ? 0.88f : 0.3f)) : ghost);
             g.fillRect (cell.reduced (3.5f, 4.0f));
             if (on && r > 0 && proc.patterns.stepHasLock (slot, r - 1, s))
             { g.setColour (lcdGlass); g.fillRect (cell.getRight() - 7.0f, cell.getY() + 5.0f, 2.0f, 2.0f); }
@@ -509,9 +887,8 @@ void FrontPanel::drawLcd (juce::Graphics& g)
 
     // lower boxes: MODE | PATTERN | TEMPO
     const float by = gridArea.getBottom() + 7.0f, bh = glass.getBottom() - 6.0f - by;
-    const juce::Rectangle<float> boxes[3] = { { glass.getX() + 6.0f, by, 244.0f, bh },
-                                              { glass.getX() + 256.0f, by, 116.0f, bh },
-                                              { glass.getX() + 378.0f, by, glass.getWidth() - 386.0f, bh } };
+    juce::ignoreUnused (by, bh);
+    const juce::Rectangle<float> boxes[3] = { lcdBox (0), lcdBox (1), lcdBox (2) };
     const char* titles[3] = { "MODE", "PATTERN", "TEMPO" };
     for (int i = 0; i < 3; ++i)
     {
@@ -556,6 +933,7 @@ void FrontPanel::drawLcd (juce::Graphics& g)
     g.drawText (juce::String (juce::roundToInt (proc.currentBpm.load())), tb.withTrimmedBottom (14.0f), juce::Justification::centred);
     g.setFont (font (10.0f));
     juce::String t = juce::String (length) + " STEPS";
+    if (const float sw = proc.apvts.getRawParameterValue ("swing")->load(); sw > 50.05f) t << "  SW " << juce::roundToInt (sw);
     if (proc.isHostPlaying()) t << "  HOST";
     else if (proc.internalPlay.load()) t << "  RUN";
     g.drawText (t, tb.withTrimmedTop (tb.getHeight() - 15.0f), juce::Justification::centred);
@@ -568,7 +946,7 @@ void FrontPanel::selectSlot (int slot)
     proc.selectSlot (slot);
 }
 
-void FrontPanel::pressKey (int key, bool shiftHeld)
+void FrontPanel::pressKey (int key, bool shiftHeld, bool altHeld)
 {
     const bool shift = shiftHeld || shiftLatched;
     if (key == Shift) { shiftLatched = ! shiftLatched; repaint(); return; }
@@ -631,6 +1009,16 @@ void FrontPanel::pressKey (int key, bool shiftHeld)
     {
         if (mode == Tross110Processor::WriteStep) stepRow = 0;
         else accentArmed = ! accentArmed;
+    }
+    else if (const int v = keyVoice (key); v >= 0 && shift)   // SHIFT + drum = mute
+    {
+        toggleDrumFlag (v, "_mute");
+        flash (juce::String (kRowNames[v + 1]) + (drumFlag (v, "_mute") ? " MUTED" : " ON"));
+    }
+    else if (const int v2 = keyVoice (key); v2 >= 0 && altHeld)   // OPTION / ALT + drum = solo
+    {
+        toggleDrumFlag (v2, "_solo");
+        flash (juce::String (kRowNames[v2 + 1]) + (drumFlag (v2, "_solo") ? " SOLO" : " SOLO OFF"));
     }
     else if (const int v = keyVoice (key); v >= 0)
     {
@@ -855,6 +1243,14 @@ void FrontPanel::mouseDown (const juce::MouseEvent& e)
             repaint (lcdRect());
             return;
         }
+        if (proc.isStandalone() && lcdBox (2).contains (e.position))
+        {
+            auto* t = proc.apvts.getParameter ("tempo");
+            if (e.getNumberOfClicks() >= 2) t->setValueNotifyingHost (t->convertTo0to1 (120.0f));
+            tempoDragging = true;
+            tempoDragStart = proc.apvts.getRawParameterValue ("tempo")->load();
+            return;
+        }
         for (int r = 0; r < kNumRows; ++r)
             for (int s = 0; s < kNumSteps; ++s)
                 if (lcdCell (r, s).contains (p))
@@ -879,7 +1275,7 @@ void FrontPanel::mouseDown (const juce::MouseEvent& e)
             }
             heldKey = k;
             if (k == Shift && e.getNumberOfClicks() >= 2) { toggleLockView(); flash (lockView ? "P-LOCK" : modeName (proc.getMode())); return; }
-            pressKey (k, e.mods.isShiftDown());
+            pressKey (k, e.mods.isShiftDown(), e.mods.isAltDown());
             repaint();
             return;
         }
@@ -887,6 +1283,14 @@ void FrontPanel::mouseDown (const juce::MouseEvent& e)
 
 void FrontPanel::mouseDrag (const juce::MouseEvent& e)
 {
+    if (tempoDragging)
+    {
+        auto* t = proc.apvts.getParameter ("tempo");
+        const float bpm = juce::jlimit (40.0f, 250.0f, std::round (tempoDragStart - (float) e.getDistanceFromDragStartY() * 0.5f));
+        t->setValueNotifyingHost (t->convertTo0to1 (bpm));
+        repaint (lcdRect());
+        return;
+    }
     if (lockPaintStep >= 0)
     {
         const auto lane = lockLane();
@@ -909,6 +1313,7 @@ void FrontPanel::mouseUp (const juce::MouseEvent&)
 {
     paintRow = -1;
     lockPaintStep = -1;
+    tempoDragging = false;
     if (heldKey >= 0) { heldKey = -1; repaint(); }
 }
 
@@ -922,22 +1327,16 @@ void FrontPanel::mouseMove (const juce::MouseEvent& e)
 
 void FrontPanel::showDrumMenu (int v)
 {
-    static const char* ids[kNumVoices] = { "bd", "sd", "cp", "ch", "oh", "cy" };
+    if (proc.isStandalone()) return;   // the app has only the main output
     static const char* names[kNumVoices] = { "BASS DRUM", "SNARE DRUM", "HAND CLAP", "C.HIHAT", "O.HIHAT", "CYMBAL" };
-    const juce::String id = ids[v];
-    auto val = [this] (const juce::String& pid) { return proc.apvts.getRawParameterValue (pid)->load() > 0.5f; };
     juce::PopupMenu m;
+    m.setLookAndFeel (&menuLook);
     m.addSectionHeader (names[v]);
-    m.addItem (1, "Mute", true, val (id + "_mute"));
-    m.addItem (2, "Solo", true, val (id + "_solo"));
-    if (! proc.isStandalone()) m.addItem (3, "Own output", true, val (id + "_out"));
-    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this).withMousePosition(),
-                     [this, id] (int r)
+    m.addItem (1, "Own output", true, drumFlag (v, "_out"));
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this).withMousePosition().withStandardItemHeight (30),
+                     [safe = juce::Component::SafePointer<FrontPanel> (this), v] (int r)
                      {
-                         const char* sfx[] = { "", "_mute", "_solo", "_out" };
-                         if (r < 1 || r > 3) return;
-                         auto* p = proc.apvts.getParameter (id + sfx[r]);
-                         p->setValueNotifyingHost (p->getValue() > 0.5f ? 0.0f : 1.0f);
+                         if (safe != nullptr && r == 1) safe->toggleDrumFlag (v, "_out");
                      });
 }
 
@@ -952,6 +1351,8 @@ void FrontPanel::showLcdMenu()
     for (int s = 0; s < kNumSlots; ++s)
         if (s != slot) copy.addItem (100 + s, slotName (s) + (MidiExport::isEmpty (proc.patterns, s) ? "" : "  (used)"));
     juce::PopupMenu m;
+    m.setLookAndFeel (&menuLook);
+    copy.setLookAndFeel (&menuLook);
     m.addSectionHeader ("PATTERN " + slotName (slot));
     m.addItem (1, "Export this pattern as MIDI...", ! MidiExport::isEmpty (proc.patterns, slot));
     m.addItem (2, "Export all patterns in a row...", ! nonEmpty.empty());
@@ -970,7 +1371,7 @@ void FrontPanel::showLcdMenu()
     }
     m.addItem (5, "Clear pattern");
     m.addItem (6, "Clear song", ! chain.empty());
-    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this).withMousePosition(),
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this).withMousePosition().withStandardItemHeight (30),
                      [safe = juce::Component::SafePointer<FrontPanel> (this), slot, nonEmpty, chain] (int r)
                      {
                          if (safe == nullptr) return;

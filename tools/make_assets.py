@@ -4,7 +4,7 @@
 # front    = front panel, 1920 x 1280, knobs removed, LCD empty
 # interior = the open case, trimmers removed (any size: its case is stretched onto the panel's outline)
 # knob     = one knob seen from above, pointer at 12 o'clock, on white
-# Both views come out the same size (1500 x 908) with the case exactly where the panel is.
+# Both views come out the same size (1502 x 922) with the case exactly where the panel is.
 # Needs: pip install pillow numpy opencv-python
 import os, sys
 import numpy as np
@@ -18,8 +18,13 @@ front, interior, knob = sys.argv[1:4]
 FONT_B = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_BC = "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"
 
-CROP = (196, 238, 1696, 1146)          # in the 1920 x 1280 front image
-PANEL_BOX = (206, 252, 1685, 1136)     # the unit's outline in the front image
+CROP = (190, 206, 1692, 1128)          # in the 1920 x 1280 front image
+PANEL_BOX = (200, 224, 1682, 1120)     # the unit's outline in the front image
+# board positions below were measured on the 1.0.2 layout; D() moves them onto this one
+_OLD_BOX, _OLD_CROP = (206, 252, 1685, 1136), (196, 238)
+def D(x, y):
+    fx = (PANEL_BOX[2] - PANEL_BOX[0]) / (_OLD_BOX[2] - _OLD_BOX[0]); fy = (PANEL_BOX[3] - PANEL_BOX[1]) / (_OLD_BOX[3] - _OLD_BOX[1])
+    return (PANEL_BOX[0] - CROP[0] + (x + _OLD_CROP[0] - _OLD_BOX[0]) * fx, PANEL_BOX[1] - CROP[1] + (y + _OLD_CROP[1] - _OLD_BOX[1]) * fy)
 CASE_BOX = (192, 219, 1387, 906)       # the case's outline in the interior image
 
 
@@ -49,12 +54,12 @@ H, W = a.shape[:2]
 mask = np.zeros((H, W), np.uint8)
 lum = a.astype(int).sum(-1) / 3
 sat = a.astype(int).max(-1) - a.astype(int).min(-1)
-X0 = [113 + 194.8 * g for g in range(7)]   # first trimmer of each group; trimmers 51 px apart, y = 800
+X0 = [113.2 + 195.2 * g for g in range(7)]   # first trimmer of each group; trimmers 51 px apart, y = 815
 for x0 in X0:
     cx = int(x0 + 51)
-    y0, y1, xa, xb = 726, 758, cx - 45, cx + 45
+    y0, y1, xa, xb = 740, 772, cx - 45, cx + 45
     mask[y0:y1, xa:xb] |= ((lum[y0:y1, xa:xb] > 150) & (sat[y0:y1, xa:xb] < 70)).astype(np.uint8)
-y0, y1 = 836, 860
+y0, y1 = 851, 876
 band = a[y0:y1].astype(int)
 sub = (band[..., 1] - band[..., 0]) < 60
 for xa, xb in [(0, 98), (176, 212), (658, 690), (834, 862), (1282, 1332), (1404, W)]:   # grey case clips / walls
@@ -68,14 +73,14 @@ ink = (236, 240, 232)
 fh, fl, fs = ImageFont.truetype(FONT_B, 18), ImageFont.truetype(FONT_BC, 11), ImageFont.truetype(FONT_BC, 10)
 names = ["ACC", "BD", "SD", "OH", "CH", "CY", "CP"]
 for g, x0 in enumerate(X0):
-    d.text((x0 + 51, 741), names[g], font=fh, fill=ink, anchor="mm")
+    d.text((x0 + 51, 755), names[g], font=fh, fill=ink, anchor="mm")
     for i, t in enumerate(["DRIVE", "DECAY", "LEVEL"] if g == 0 else ["TUNE", "DECAY", "LEVEL"]):
-        d.text((x0 + 51 * i, 825), t, font=fl, fill=ink, anchor="mm")
+        d.text((x0 + 51 * i, 840), t, font=fl, fill=ink, anchor="mm")
 # pads + labels for the four extra trimmers (drawn by the plug-in)
 for g, t in [(1, "ATTACK"), (2, "SNAPPY"), (5, "TONE"), (6, "TAIL")]:
     x = X0[g] + 112
-    d.ellipse((x - 9, 741 - 9, x + 9, 741 + 9), fill=(196, 132, 84), outline=(150, 100, 60))
-    d.text((x, 722), t, font=fs, fill=ink, anchor="mm")
+    d.ellipse((x - 9, 755 - 9, x + 9, 755 + 9), fill=(196, 132, 84), outline=(150, 100, 60))
+    d.text((x, 736), t, font=fs, fill=ink, anchor="mm")
 board.save(os.path.join(OUT, "pcb.png"), optimize=True)
 
 # ---- knob: cut the round cap out of the white background

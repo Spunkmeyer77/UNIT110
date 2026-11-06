@@ -19,6 +19,7 @@ trimmers for every sound setting.
 |---|---|
 | SHIFT + 1..5 | PLAY SONG · PLAY PATTERN · WRITE SONG · WRITE STEP · WRITE TAP |
 | SHIFT + 6 / 7 / 8 | 12 / 16 steps · clear pattern · clear song |
+| SHIFT / Option + drum key | mute / solo |
 | A\|B\|C\|D | bank of 8 patterns (I-II = steps 9-16 in WRITE STEP) |
 | START / STOP | run on the TEMPO knob while the host is stopped |
 | LCD | click / drag to edit steps; right-click for MIDI export, copy, clear |

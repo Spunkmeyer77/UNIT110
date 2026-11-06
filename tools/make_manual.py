@@ -62,7 +62,7 @@ s += [Spacer(1, 14 * mm), Paragraph('UNIT <font color="#3f7f9e">110</font>', tit
       Paragraph(f"Transistor Labs rhythm composer  ·  Owner's manual  ·  version {VERSION}", sub)]
 img = os.path.join(ROOT, "docs", "panel.png")
 if os.path.exists(img):
-    s += [Image(img, width=W, height=W * 908 / 1500), Spacer(1, 8)]
+    s += [Image(img, width=W, height=W * 922 / 1502), Spacer(1, 8)]
 s += [P("UNIT 110 is a drum machine you play like the hardware: press its keys, turn its knobs, read its LCD, and open the "
         "case to reach the trimmers inside. Six analog-style voices - bass drum, snare, hand clap, closed hat, open hat "
         "and cymbal - a global accent, and a 16-step sequencer with 32 patterns and a song mode. It runs as an Audio Unit, "
@@ -71,11 +71,11 @@ s += [P("UNIT 110 is a drum machine you play like the hardware: press its keys, 
 s += [PageBreak(), Paragraph("1  System requirements", h1)]
 s += [table([
     ["System", "Needs"],
-    ["macOS", "macOS 10.13 or later; Apple silicon or Intel (universal build). A host for AU or VST3 (Ableton Live, Logic Pro, "
-              "GarageBand, Bitwig, Reaper...), or the standalone app."],
-    ["Windows", "Windows 10 or 11, 64-bit. A VST3 host, or the standalone app."],
-    ["Linux", "x86_64 with X11, FreeType and ALSA or JACK. A VST3 or LV2 host (Bitwig, Reaper, Ardour...), or the standalone app."],
-    ["Screen", "The window opens at 1091 x 640 and can be resized from 50 % to 120 %."],
+    ["macOS", "<b>Minimum: macOS 10.13 High Sierra on Intel, macOS 11 Big Sur on Apple silicon</b> (universal build; runs on macOS 12 "
+              "Monterey and every later version). A host for AU or VST3 (Ableton Live, Logic Pro, GarageBand, Bitwig, Reaper...), or the standalone app."],
+    ["Windows", "<b>Minimum: Windows 10, 64-bit</b> (Windows 11 too). A VST3 host, or the standalone app."],
+    ["Linux", "<b>Minimum: x86_64</b> with X11, FreeType and ALSA or JACK. A VST3 or LV2 host (Bitwig, Reaper, Ardour...), or the standalone app."],
+    ["Screen", "The window opens at 1126 x 691 and can be resized from 50 % to 120 %."],
     ["CPU / memory", "Light: one instance uses a few percent of one core; about 30 MB of memory."],
 ], [28 * mm, W - 28 * mm])]
 
@@ -106,12 +106,15 @@ s += [Paragraph("3.0  Opening the case", h2),
 s += [Paragraph("3.1  Knobs and switch", h2)]
 s += [table([
     ["Control", "What it does"],
-    ["TEMPO", "40-250 BPM. Sets the speed when UNIT 110 runs on its own (START / STOP). When the host plays, the host tempo rules."],
+    ["SWING", "From STRAIGHT (50 %) to SHUFFLE (75 %): every second 16th note comes later. Around 62 % is the classic swing; fully right is a "
+              "hard, dotted shuffle. The LCD shows the amount (SW) in the TEMPO box. MIDI export swings too."],
     ["BALANCE", "Drums against metal. Turn left and the hats and cymbal fade; turn right and the bass drum, snare and clap fade. Centre = both full."],
     ["ACCENT", "How hard accented steps hit: a short swell on the whole machine that also drives it into grit."],
     ["VOLUME", "Main output level (5 = -14 dB, 10 = +6 dB)."],
     ["POWER", "Click the switch on the top edge. Off = the LCD goes dark and UNIT 110 is silent."],
     ["Knobs", "Drag up/down. The value shows while you drag; double-click resets."],
+    ["Tempo", "UNIT 110 always follows the tempo of your DAW. In the standalone app, drag up/down on the TEMPO box of the LCD to set it "
+              "(40-250 BPM); double-click it for 120."],
 ], [26 * mm, W - 26 * mm])]
 s += [Paragraph("3.2  Keys", h2)]
 s += [table([
@@ -120,9 +123,11 @@ s += [table([
               "<b>Double-click</b> SHIFT to switch the LCD to the P-LOCK screen (section 4.1); double-click again to go back."],
     ["A|B|C|D", "Steps through the 4 banks of 8 patterns (A1-D8). With SHIFT, or in WRITE STEP: I-II, switches between steps 1-8 and 9-16."],
     ["1 - 8", "Selects pattern 1-8 of the current bank. While playing, the new pattern starts at the next step 1 (the LCD shows NEXT)."],
-    ["START / STOP", "Runs and stops the sequencer at the TEMPO knob while the host is stopped. When the host plays, UNIT 110 follows it."],
-    ["Drum keys", "Play the drum. ACCENT arms an accent for the next drum you hit (the key stays down). Right-click a drum key for Mute, "
-                  "Solo and Own output."],
+    ["START / STOP", "Runs and stops the sequencer while the DAW is stopped, at the DAW's tempo. When the DAW plays, UNIT 110 follows it."],
+    ["Drum keys", "Play the drum. ACCENT arms an accent for the next drum you hit (the key stays down)."],
+    ["SHIFT + drum", "<b>Mute</b> the drum on/off. Its row on the LCD shows M, the name blinks and its steps go faint."],
+    ["Option + drum", "<b>Solo</b> the drum on/off (Alt on Windows / Linux). Its row shows S and the other drums go faint. Several drums can be soloed."],
+    ["Right-click drum", "<b>Own output</b> (plug-in only): sends the drum to its own output instead of the main mix (section 6)."],
 ], [26 * mm, W - 26 * mm])]
 s += [Paragraph("3.3  SHIFT functions", h2)]
 s += [table([
@@ -138,6 +143,7 @@ s += [table([
     ["6", "12 / 16", "Pattern length 12 (shuffle, triplets) or 16 steps."],
     ["7", "PATTERN CLEAR", "Clears the selected pattern."],
     ["8", "MEASURE RESET", "Clears the song."],
+    ["drum key", "MUTE", "Mutes / unmutes that drum (see 3.2)."],
 ], [16 * mm, 32 * mm, W - 48 * mm])]
 
 s += [Paragraph("4  The LCD", h1),
@@ -147,7 +153,8 @@ s += [Paragraph("4  The LCD", h1),
         "patterns in a row, every pattern as its own file, or the song as MIDI; copy the pattern to another slot; clear the pattern or the song. "
         "MIDI files use 16th notes on channel 10, accented steps at velocity 127."),
       P("The lower boxes show the MODE (and short messages), the PATTERN (bank letter + number, NEXT for a queued one) and the TEMPO, "
-        "the length and whether the host (HOST) or UNIT 110 itself (RUN) is playing."),
+        "the length, the swing (SW) and whether the host (HOST) or UNIT 110 itself (RUN) is playing. M and S after a drum's name "
+        "mean muted and soloed."),
       P("<b>Copy / Paste:</b> right-click the LCD, choose <b>Copy pattern</b>, select another pattern with the number keys, "
         "right-click again and choose <b>Paste pattern</b>. The steps and the parameter locks are copied. <b>Copy pattern to</b> sends it "
         "straight to any slot.")]
@@ -158,7 +165,7 @@ s += [Paragraph("4.1  Parameter locks (P-LOCK screen)", h2),
         "drum's extra (ATTACK, SNAPPY, TAIL or TONE). <b>Click or drag</b> in a step's column to set its value: top = maximum, bottom = minimum "
         "(TUNE is centred on 0). <b>Double-click</b> (or Alt-click) a column to remove the lock: that step then follows the trimmer again. "
         "A mark under a column shows where the drum plays. Right-click for clearing a lane, a drum or the whole pattern."),
-      Image(os.path.join(ROOT, "docs", "locks.png"), width=W * 0.62, height=W * 0.62 * 908 / 1500),
+      Image(os.path.join(ROOT, "docs", "locks.png"), width=W * 0.62, height=W * 0.62 * 922 / 1502),
       P("A lock holds until that drum's next hit. Locks are saved with each pattern and copied with it. Steps with locks show a small dot "
         "in the normal pattern view.")]
 
@@ -168,7 +175,7 @@ s += [Paragraph("5  Inside the case", h1),
         "to close the case.")]
 img = os.path.join(ROOT, "docs", "pcb.png")
 if os.path.exists(img):
-    s += [Image(img, width=W, height=W * 908 / 1500), Spacer(1, 6)]
+    s += [Image(img, width=W, height=W * 922 / 1502), Spacer(1, 6)]
 s += [table([
     ["Trimmer", "What it does"],
     ["TUNE", "Pitch, ±12 semitones. On the hats and cymbal it moves the whole metallic cluster."],
@@ -194,14 +201,15 @@ s += [Spacer(1, 4),
       P("Velocities up to 100 scale the level; above 100 also fires the accent."),
       P("<b>Outputs (plug-in):</b> main stereo plus one mono output per drum. Right-click a drum key and choose <b>Own output</b> to take "
         "that drum out of the main mix and send it to its own output (in Live: make an audio track, Audio From = the UNIT 110 track, "
-        "pick the drum's output, Monitor In). The standalone app has only the main output."),
+        "pick the drum's output, Monitor In). The standalone app has only the main output, so there is no right-click menu there."),
       P("All 32 patterns, the song, the mode and every knob and trimmer are saved with your project.")]
 
 s += [Paragraph("7  Specifications", h1)]
 s += [table([
     ["", ""],
     ["Voices", "6: bass drum, snare, hand clap, closed hat, open hat, cymbal; plus global accent"],
-    ["Sequencer", "16 steps (12 or 16), 7 rows, 32 patterns (4 banks x 8), song of up to 32 measures, host sync, own clock, step and tap writing"],
+    ["Sequencer", "16 steps (12 or 16), 7 rows, 32 patterns (4 banks x 8), song of up to 32 measures, swing 50-75 %, parameter locks, "
+                  "host sync, own clock, step and tap writing"],
     ["Outputs", "Main stereo + 6 mono drum outputs (plug-in)"],
     ["Formats", "AU, VST3 (macOS); VST3 (Windows); VST3, LV2 (Linux); standalone app on all three"],
     ["Sample rates", "Any host rate (44.1-192 kHz)"],

@@ -76,6 +76,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout Tross110Processor::createLay
         return juce::String (std::abs (v), 1) + (v < 0 ? " Drums" : " Metal");
     }));
     l.add (onOff ("power", "Power", true));
+    l.add (std::make_unique<APF> (juce::ParameterID { "swing", 1 }, "Swing", juce::NormalisableRange<float> (50.0f, 75.0f, 0.1f), 50.0f,
+                                  juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int) { return juce::String (v, 1) + " %"; })));
     l.add (onOff ("seqon", "Seq On", true));
     l.add (std::make_unique<juce::AudioParameterInt> (juce::ParameterID { "seqlen", 1 }, "Seq Length", 1, 16, 16));
     l.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "pattern", 1 }, "Pattern",
@@ -98,7 +100,7 @@ Tross110Processor::Tross110Processor()
     raw.bdAttack = p ("bd_attack"); raw.sdSnappy = p ("sd_snappy"); raw.cpTail = p ("cp_tail"); raw.cyTone = p ("cy_tone");
     raw.accent = p ("accent"); raw.master = p ("master");
     raw.seqOn = p ("seqon"); raw.seqLen = p ("seqlen"); raw.pattern = p ("pattern"); raw.rec = p ("rec");
-    raw.tempo = p ("tempo"); raw.balance = p ("balance"); raw.accDrive = p ("acc_drive"); raw.accDecay = p ("acc_decay"); raw.power = p ("power");
+    raw.tempo = p ("tempo"); raw.balance = p ("balance"); raw.accDrive = p ("acc_drive"); raw.accDecay = p ("acc_decay"); raw.power = p ("power"); raw.swing = p ("swing");
 }
 
 bool Tross110Processor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -237,11 +239,11 @@ void Tross110Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     // ---- transport: the host when it plays, otherwise START/STOP on the TEMPO knob
     bool playing = false;
     double ppq = 0.0, bpm = 120.0;
-    bool hostRuns = false;
+    bool hostRuns = false, hostBpm = false;
     if (auto* ph = getPlayHead())
         if (auto pos = ph->getPosition())
         {
-            if (auto b = pos->getBpm()) bpm = *b;
+            if (auto b = pos->getBpm()) { bpm = *b; hostBpm = ! isStandalone(); }
             if (auto q = pos->getPpqPosition())
             {
                 hostRuns = pos->getIsPlaying();
@@ -258,7 +260,7 @@ void Tross110Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     }
     else
     {
-        bpm = raw.tempo->load();
+        if (! hostBpm) bpm = raw.tempo->load();   // in a DAW, START / STOP use the DAW's tempo
         playing = internalPlay.load();
         if (! playing) internalPpq = 0.0;
         ppq = internalPpq;
@@ -310,6 +312,13 @@ void Tross110Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     float drumSig[kNumVoices];
     auto midiIt = midi.cbegin();
     const double q0 = ppq * 4.0;   // position in 16ths at the block start
+    // SWING: the second 16th of every pair starts later (50 % = straight, 75 % = half a 16th late)
+    const double swingOff = (juce::jlimit (50.0f, 75.0f, raw.swing->load()) / 50.0 - 1.0);
+    auto stepAt = [swingOff] (double qq)
+    {
+        const double pair = std::floor (qq * 0.5 + 1e-12);
+        return (juce::int64) (2.0 * pair + ((qq - 2.0 * pair) >= 1.0 + swingOff - 1e-9 ? 1.0 : 0.0));
+    };
 
     // clicks on the drum name strips since the last block: play at the block start, record if REC is on
     for (int r = hitRead.load (std::memory_order_relaxed); r != hitWrite.load (std::memory_order_acquire); r = (r + 1) % kHitQueue)
@@ -325,12 +334,11 @@ void Tross110Processor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         const double q = q0 + i * sixteenthsPerSample;
         if (playing)
         {
-            const auto six = (juce::int64) std::floor (q + 1e-9);
+            const auto six = stepAt (q + 1e-9);
             if (! wasPlaying)
             {
                 // starting exactly on a 16th plays it; starting in between waits for the next one
-                const double frac = q - std::floor (q);
-                lastSixteenth = (frac < sixteenthsPerSample) ? six - 1 : six;
+                lastSixteenth = (stepAt (q - sixteenthsPerSample + 1e-9) != six) ? six - 1 : six;
                 wasPlaying = true;
             }
             if (six != lastSixteenth)

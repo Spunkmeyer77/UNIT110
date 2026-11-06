@@ -29,8 +29,10 @@ struct MidiExport
 
     // One track: the given slots one after another, each `length` steps long.
     static juce::MidiFile make (const PatternMemory& p, const std::vector<int>& slots, int length, double bpm,
-                                const juce::String& name)
+                                const juce::String& name, double swing = 50.0)
     {
+        // SWING 50..75 %: every second 16th comes later, up to half a 16th
+        const int swingTicks = juce::roundToInt ((juce::jlimit (50.0, 75.0, swing) / 50.0 - 1.0) * kTicksPerStep);
         juce::MidiMessageSequence seq;
         auto meta = [&] (juce::MidiMessage m) { m.setTimeStamp (0); seq.addEvent (m); };
         meta (juce::MidiMessage::textMetaEvent (3, name));
@@ -46,10 +48,11 @@ struct MidiExport
                 for (int v = 0; v < kNumVoices; ++v)
                     if (p.cell (slot, v + 1, s))
                     {
-                        const int t = start + s * kTicksPerStep;
+                        const int off = (s % 2) ? swingTicks : 0;
+                        const int t = start + s * kTicksPerStep + off;
                         const auto vel = (juce::uint8) (accent ? kAccentVelocity : kVelocity);
                         seq.addEvent (juce::MidiMessage::noteOn (kChannel, noteFor (v), vel), t);
-                        seq.addEvent (juce::MidiMessage::noteOff (kChannel, noteFor (v)), t + kNoteTicks);
+                        seq.addEvent (juce::MidiMessage::noteOff (kChannel, noteFor (v)), t + kNoteTicks - off);
                     }
             }
             start += length * kTicksPerStep;
