@@ -1,6 +1,7 @@
 # Builds UNIT 110 on macOS, Windows and Linux.
 # - every push / pull request: builds + installers, downloadable under the run's "Artifacts"
-# - pushing a tag like v0.1.0: also publishes a GitHub Release with all installers and the manual attached
+# - every push to main (or a tag like v1.0.0): also publishes the GitHub Release v<version from CMakeLists.txt>
+#   with all installers, the manual and the update history attached
 name: Build UNIT 110
 
 on:
@@ -122,14 +123,22 @@ jobs:
   release:
     name: Publish release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-22.04
     steps:
+      - uses: actions/checkout@v5
+      - name: Read version
+        run: echo "VERSION=$(sed -nE 's/^project\(UNIT110 VERSION ([0-9.]+)\).*/\1/p' CMakeLists.txt)" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
+          name: UNIT 110 ${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
           files: dist/*
-          generate_release_notes: true
+          body: |
+            UNIT 110 ${{ env.VERSION }} by Transistor Labs. Installers for macOS (.pkg), Windows (.exe) and Linux (.tar.gz), plus the manual and the update history.
+            macOS: the installer is not notarised; see "macOS security warning" in the manual.
