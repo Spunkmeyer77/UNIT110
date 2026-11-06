@@ -76,9 +76,16 @@ jobs:
       - name: Check minimum macOS version
         if: runner.os == 'macOS'
         run: |
+          # x86_64 should say 10.13, arm64 11.0 (the lowest Apple silicon allows). Nothing may need more than macOS 12.
           for f in "build/UNIT110_artefacts/Release/AU/UNIT 110.component/Contents/MacOS/UNIT 110" \
-                   "build/UNIT110_artefacts/Release/VST3/UNIT 110.vst3/Contents/MacOS/UNIT 110"; do
-            vtool -show-build "$f" | tee /dev/stderr | grep -E "minos 10\.13" > /dev/null || { echo "::error::$f does not target macOS 10.13"; exit 1; }
+                   "build/UNIT110_artefacts/Release/VST3/UNIT 110.vst3/Contents/MacOS/UNIT 110" \
+                   "build/UNIT110_artefacts/Release/Standalone/UNIT 110.app/Contents/MacOS/UNIT 110"; do
+            echo "== $f"; vtool -arch x86_64 -show-build "$f" | grep -E "minos|platform"; vtool -arch arm64 -show-build "$f" | grep -E "minos|platform"
+            for v in $( (vtool -arch x86_64 -show-build "$f"; vtool -arch arm64 -show-build "$f") | awk '/minos/ {print $2}'); do
+              major=${v%%.*}
+              if [ "$major" -gt 12 ] && [ "$major" -ne 10 ]; then echo "::error::$f needs macOS $v"; exit 1; fi
+              echo "::notice::$(basename "$f") minimum macOS $v"
+            done
           done
 
       - name: Validate Audio Unit (macOS)
