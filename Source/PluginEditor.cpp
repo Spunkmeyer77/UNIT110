@@ -251,13 +251,13 @@ PcbView::PcbView (Tross110Processor& p, Tross110Editor& ed) : proc (p), editor (
     board = juce::ImageCache::getFromMemory (BinaryData::pcb_png, BinaryData::pcb_pngSize);
     trimLook.kind = KnobLook::Trimmer;
     smallTrimLook.kind = KnobLook::SmallTrimmer;
-    scale = 1.0f; xOff = 0.0f;   // the board image is made the same size as the panel
+    scale = (float) kDesignH / (float) board.getHeight(); xOff = 0.0f;   // stored at 2x the design size
 
     const float a0 = juce::MathConstants<float>::pi * 1.2f, a1 = juce::MathConstants<float>::pi * 2.8f;
     auto add = [&] (const juce::String& id, float bx, float by, bool small)
     {
         auto* k = trims.add (new Knob (proc.apvts, id, small ? smallTrimLook : trimLook, a0, a1));
-        const float d = (small ? 26.0f : 40.0f) * scale;
+        const float d = small ? 26.0f : 40.0f;
         const auto c = toView (bx, by);
         k->setBounds (juce::Rectangle<float> (d + 6, d + 6).withCentre (c).toNearestInt());
         addAndMakeVisible (k);
@@ -415,7 +415,7 @@ void FrontPanel::drawKeyPressed (juce::Graphics& g, juce::Rectangle<int> r)
     // the key sinks: redraw it a little lower and darker, with a shadow along the top edge
     g.setColour (juce::Colour (0xff121416));
     g.fillRoundedRectangle (r.toFloat(), 4.0f);
-    g.drawImage (panel, r.getX(), r.getY() + 2, r.getWidth(), r.getHeight() - 2, r.getX(), r.getY(), r.getWidth(), r.getHeight() - 2);
+    g.drawImage (panel, r.getX(), r.getY() + 2, r.getWidth(), r.getHeight() - 2, r.getX() * 2, r.getY() * 2, r.getWidth() * 2, (r.getHeight() - 2) * 2);
     g.setColour (juce::Colour (0x2a002a40));
     g.fillRoundedRectangle (r.toFloat().reduced (2.0f), 4.0f);
     juce::ColourGradient top (juce::Colours::black.withAlpha (0.35f), 0, (float) r.getY(), juce::Colours::transparentBlack, 0, (float) r.getY() + 9.0f, false);
@@ -427,15 +427,15 @@ void FrontPanel::paint (juce::Graphics& g)
 {
     g.fillAll (juce::Colours::black);
     g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
-    g.drawImageAt (panel, 0, 0);
+    g.drawImage (panel, juce::Rectangle<float> (0, 0, (float) kDesignW, (float) kDesignH));   // stored at 2x
 
     // POWER: the blue slider tab sits left (ON) or right (OFF)
     if (! powered())
     {
-        const auto tab = panel.getClippedImage (kPowerTab);
+        const auto tab = panel.getClippedImage (kPowerTab * 2);
         g.setColour (juce::Colours::black);
         g.fillRect (kPowerTab.withTrimmedBottom (3));
-        g.drawImageAt (tab, kPowerTab.getX() + 34, kPowerTab.getY());
+        g.drawImage (tab, kPowerTab.translated (34, 0).toFloat());
     }
 
     drawPanelPrint (g);

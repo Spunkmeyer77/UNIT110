@@ -14,6 +14,10 @@ VERSION = re.search(r"project\(UNIT110 VERSION ([0-9.]+)\)", open(os.path.join(R
 OUT = os.path.join(ROOT, "docs", "UNIT110-History.pdf")
 
 HISTORY = [
+    ("1.0.6", [
+        "Twice-as-sharp artwork: the front panel and the circuit board are now stored at double resolution, crisp on Retina / HiDPI "
+        "screens and at the largest window size.",
+    ]),
     ("1.0.5", [
         "New clean, factory-new look: a pristine front panel, new knobs and a clean circuit board inside the case.",
         "All lettering, key legends and icons drawn sharp on the new panel; the board print redone (ACC, BD, SD, OH, CH, CY, CP).",
