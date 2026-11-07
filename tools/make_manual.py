@@ -180,15 +180,16 @@ s += [table([
     ["Trimmer", "What it does"],
     ["TUNE", "Pitch, ±12 semitones. On the hats and cymbal it moves the whole metallic cluster."],
     ["DECAY", "Length of the sound. Middle is the classic timing; fully left a quarter as long, fully right four times as long. "
-              "The bass drum's decay also follows its tuning: tune it up and it gets shorter."],
+              "On the bass drum it is the ring of its resonant filter; on the snare the length of the noise; on the clap the last burst "
+              "and the room tail."],
     ["LEVEL", "The drum's level, -inf to +6 dB."],
     ["ACC: DRIVE", "How much an accent pushes the machine into grit."],
     ["ACC: DECAY", "How long the accent swell lasts."],
     ["ACC: LEVEL", "Accent amount (the same setting as the ACCENT knob on the front)."],
-    ["ATTACK (BD)", "The click at the front of the kick."],
-    ["SNAPPY (SD)", "Noise snap against the drum body."],
+    ["ATTACK (BD)", "How far the kick's pitch drops at the start: 50 % = one octave (110 Hz down to 55 Hz), 0 % = no drop, 100 % = from three times the pitch."],
+    ["SNAPPY (SD)", "Noise snap against the 235 Hz tone. 60 % is the original balance."],
     ["TONE (CY)", "Bright attack shimmer (right) against the darker ringing body (left)."],
-    ["TAIL (CP)", "Level of the clap's room tail after the burst of hits."],
+    ["TAIL (CP)", "Level of the clap's room tail after the burst of hits. 15 % is the original."],
 ], [28 * mm, W - 28 * mm])]
 
 s += [Paragraph("6  MIDI and outputs", h1)]
@@ -207,7 +208,8 @@ s += [Spacer(1, 4),
 s += [Paragraph("7  Specifications", h1)]
 s += [table([
     ["", ""],
-    ["Voices", "6: bass drum, snare, hand clap, closed hat, open hat, cymbal; plus global accent"],
+    ["Voices", "6: bass drum (55 Hz resonant filter with an octave pitch drop), snare (235 Hz tone + 3550 Hz noise), hand clap "
+               "(3 + 1 noise bursts and a room tail at 1140 Hz), closed hat, open hat, cymbal; plus global accent"],
     ["Sequencer", "16 steps (12 or 16), 7 rows, 32 patterns (4 banks x 8), song of up to 32 measures, swing 50-75 %, parameter locks, "
                   "host sync, own clock, step and tap writing"],
     ["Outputs", "Main stereo + 6 mono drum outputs (plug-in)"],

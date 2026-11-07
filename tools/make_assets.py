@@ -28,6 +28,25 @@ def D(x, y):
 CASE_BOX = (192, 219, 1387, 906)       # the case's outline in the interior image
 
 
+# ---- straighten: the renders' top and bottom edges are not quite level (the bottom drops ~16 px to the right).
+# Each column is stretched so both edges become level at TOP / BOTTOM. The plug-in uses the same fits to place things.
+TOP, BOTTOM = 24.0, 904.0
+PANEL_FIT = ((0.00167013, 22.5601), (0.01115439, 895.7117))    # (slope, offset) of top and bottom edge, x in pixels
+BOARD_FIT = ((-0.00487204, 26.2891), (-0.00365374, 913.3525))
+
+
+def straighten(img, fit):
+    a = np.asarray(img.convert("RGB"))
+    h, w = a.shape[:2]
+    (st, ot), (sb, ob) = fit
+    xs = np.arange(w, dtype=np.float32)
+    top = ot + st * xs; bot = ob + sb * xs
+    ys = np.arange(h, dtype=np.float32)[:, None]
+    mapy = (top[None, :] + (ys - TOP) * (bot - top)[None, :] / (BOTTOM - TOP)).astype(np.float32)
+    mapx = np.repeat(xs[None, :], h, axis=0)
+    return Image.fromarray(cv2.remap(a, mapx, mapy, cv2.INTER_LANCZOS4, borderMode=cv2.BORDER_CONSTANT, borderValue=0))
+
+
 def bbox(img):
     a = np.asarray(img.convert("RGB")).astype(int).sum(-1) > 60
     ys, xs = np.where(a)
@@ -36,7 +55,7 @@ def bbox(img):
 
 # ---- front panel
 f = Image.open(front).convert("RGB")
-f.crop(CROP).save(os.path.join(OUT, "panel.png"), optimize=True)
+straighten(f.crop(CROP), PANEL_FIT).save(os.path.join(OUT, "panel.png"), optimize=True)
 
 # ---- interior: stretch the case onto the panel outline, same crop
 im = Image.open(interior).convert("RGB")
@@ -81,7 +100,7 @@ for g, t in [(1, "ATTACK"), (2, "SNAPPY"), (5, "TONE"), (6, "TAIL")]:
     x = X0[g] + 112
     d.ellipse((x - 9, 755 - 9, x + 9, 755 + 9), fill=(196, 132, 84), outline=(150, 100, 60))
     d.text((x, 736), t, font=fs, fill=ink, anchor="mm")
-board.save(os.path.join(OUT, "pcb.png"), optimize=True)
+straighten(board, BOARD_FIT).save(os.path.join(OUT, "pcb.png"), optimize=True)
 
 # ---- knob: cut the round cap out of the white background
 k = Image.open(knob).convert("RGB")

@@ -279,7 +279,9 @@ PcbView::PcbView (Tross110Processor& p, Tross110Editor& ed) : proc (p), editor (
 // board positions were measured on the 1.0.2 layout; this moves them onto the current artwork
 juce::Point<float> PcbView::toView (float x, float y) const
 {
-    return { 10.0f + (x - 10.0f) * 1.002028f, 18.0f + (y - 14.0f) * 1.013575f };
+    const float nx = 10.0f + (x - 10.0f) * 1.002028f, ny = 18.0f + (y - 14.0f) * 1.013575f;
+    const float top = 26.2891f - 0.00487204f * nx, bot = 913.3525f - 0.00365374f * nx;   // straightened like the artwork
+    return { nx, 24.0f + (ny - top) * (904.0f - 24.0f) / (bot - top) };
 }
 
 void PcbView::paint (juce::Graphics& g)
@@ -313,20 +315,20 @@ void PcbView::mouseUp (const juce::MouseEvent& e)
 juce::Rectangle<int> FrontPanel::keyRect (int key)
 {
     static const int numX[8] = { 357, 450, 544, 636, 730, 824, 919, 1013 };
-    static const int numY[8] = { 582, 582, 584, 585, 586, 587, 588, 589 };
+    static const int numY[8] = { 585, 585, 585, 586, 586, 586, 586, 586 };
     switch (key)
     {
-        case Shift:   return { 90, 580, 104, 82 };
-        case Bank:    return { 262, 582, 49, 81 };
-        case Start:   return { 1124, 566, 107, 107 };
-        case Stop:    return { 1301, 567, 108, 106 };
-        case KAccent: return { 89, 732, 136, 89 };
-        case KBD:     return { 283, 733, 137, 90 };
-        case KSD:     return { 479, 736, 135, 89 };
+        case Shift:   return { 90, 585, 104, 82 };
+        case Bank:    return { 262, 585, 49, 82 };
+        case Start:   return { 1124, 563, 107, 106 };
+        case Stop:    return { 1301, 563, 108, 105 };
+        case KAccent: return { 89, 737, 136, 90 };
+        case KBD:     return { 283, 737, 137, 90 };
+        case KSD:     return { 479, 738, 135, 89 };
         case KOH:     return { 675, 738, 133, 90 };
-        case KCH:     return { 871, 740, 135, 90 };
-        case KCY:     return { 1068, 743, 137, 89 };
-        case KCP:     return { 1268, 744, 140, 91 };
+        case KCH:     return { 871, 739, 135, 89 };
+        case KCY:     return { 1068, 739, 137, 89 };
+        case KCP:     return { 1268, 739, 140, 89 };
         default:      break;
     }
     if (key >= N1 && key <= N8) return { numX[key - N1], numY[key - N1], 49, 81 };
@@ -339,7 +341,7 @@ constexpr float kLabelW = 78.0f, kTopRow = 24.0f, kRowH = 22.5f;
 const juce::Point<float> kFrontScrews[] = { { 44, 874 }, { 1458, 874 } };
 const juce::Rectangle<int> kLogo { 100, 50, 362, 68 }, kPowerSwitch { 1240, 0, 76, 52 }, kPowerText { 1256, 62, 92, 44 },
                            kPowerTab { 1254, 19, 42, 11 };
-const juce::Point<int> kKnobCentre[4] = { { 902, 306 }, { 1057, 306 }, { 1219, 307 }, { 1380, 309 } };
+const juce::Point<int> kKnobCentre[4] = { { 902, 306 }, { 1059, 305 }, { 1218, 304 }, { 1379, 305 } };
 }
 
 juce::Rectangle<int> FrontPanel::lcdCell (int row, int step)
@@ -457,10 +459,20 @@ namespace
 const juce::Colour kPrintInk (0xff26282c), kKeyInk (0xfff1f5f6), kLogoInk (0xffc4c8c8);
 
 // positions were measured on the original (printed) render; map them onto this artwork
+// the artwork is straightened (tools/make_assets.py): each column is stretched so the top / bottom edges are level
+float straightenY (float x, float y, float st, float ot, float sb, float ob)
+{
+    const float top = ot + st * x, bot = ob + sb * x;
+    return 24.0f + (y - top) * (904.0f - 24.0f) / (bot - top);
+}
+
 juce::Rectangle<float> O (float x, float y, float w, float h)
 {
     constexpr float fx = 1482.0f / 1479.0f, fy = 896.0f / 884.0f;
-    return { 10.0f + (x - 206.0f) * fx, 18.0f + (y - 252.0f) * fy, w * fx, h * fy };
+    const float nx = 10.0f + (x - 206.0f) * fx, ny = 18.0f + (y - 252.0f) * fy;
+    const float y0 = straightenY (nx + w * fx * 0.5f, ny, 0.00167013f, 22.5601f, 0.01115439f, 895.7117f);
+    const float y1 = straightenY (nx + w * fx * 0.5f, ny + h * fy, 0.00167013f, 22.5601f, 0.01115439f, 895.7117f);
+    return { nx, y0, w * fx, y1 - y0 };
 }
 
 // text whose capitals fill the box height; squeezed or stretched (a little) to the box width when fit = true

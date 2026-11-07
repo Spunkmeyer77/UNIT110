@@ -14,6 +14,14 @@ VERSION = re.search(r"project\(UNIT110 VERSION ([0-9.]+)\)", open(os.path.join(R
 OUT = os.path.join(ROOT, "docs", "UNIT110-History.pdf")
 
 HISTORY = [
+    ("1.0.4", [
+        "New bass drum, snare and hand clap sound engines, rebuilt from the Transistor Labs DR-110 device: the kick is a 55 Hz resonant "
+        "filter struck with an octave pitch drop, the snare a 235 Hz tone with 3550 Hz noise, the clap three short noise bursts, a longer "
+        "one and a room tail at 1140 Hz.",
+        "Their trimmers: TUNE, DECAY and LEVEL as before; ATTACK = the kick's pitch drop, SNAPPY = noise against tone, TAIL = the clap's room. "
+        "At the default settings each drum is the original sound.",
+        "The front panel and the open case are now perfectly straight (the bottom edge used to drop to the right).",
+    ]),
     ("1.0.3", [
         "Sharp panel: all lettering, numbers, key legends and icons are now drawn as vector graphics, crisp at any window size.",
         "Spelling: BASS DRUM, DC.",

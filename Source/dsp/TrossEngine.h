@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <limits>
+#include <utility>
 
 namespace tross110
 {
@@ -269,6 +270,117 @@ struct MetalFilter
     inline double tick (double x) { double l, b; lp.tick (hp.hp (x), l, b); return l / q; }
 };
 
+
+// ---- building blocks for the DR-110 voices ported from the Max for Live device (MSP objects) ----
+// linear segments, like zigzag~: start value, then (target, ms) pairs
+struct Zigzag
+{
+    double y = 0, inc = 0; int left = 0, seg = 0, n = 0;
+    double tgt[4] {}; double ms[4] {};
+    void start (double y0, std::initializer_list<std::pair<double, double>> segs, double fs)
+    {
+        y = y0; n = 0; for (auto& s : segs) { tgt[n] = s.first; ms[n] = s.second; ++n; } seg = -1; left = 0; this->fs = fs; next();
+    }
+    double fs = 48000;
+    void next()
+    {
+        ++seg;
+        if (seg >= n) { left = -1; inc = 0; return; }
+        left = (int) (ms[seg] * 0.001 * fs);
+        if (left <= 0) { y = tgt[seg]; next(); return; }
+        inc = (tgt[seg] - y) / left;
+    }
+    inline double tick()
+    {
+        const double out = y;
+        if (left > 0) { y += inc; if (--left == 0) { y = tgt[seg]; next(); } }
+        return out;
+    }
+};
+
+// curve~: segments (target, ms, curve); curve < 0 = fast start, slow end (like an RC discharge)
+struct Curve
+{
+    struct Seg { double target, ms, curve; };
+    Seg segs[12] {}; int n = 0, seg = -1, left = 0, len = 1;
+    double y = 0, from = 0, fs = 48000;
+    void start (std::initializer_list<Seg> list, double sampleRate)
+    {
+        fs = sampleRate; n = 0;
+        for (auto& s : list) if (n < 12) segs[n++] = s;
+        seg = -1; left = 0; next();
+    }
+    void next()
+    {
+        ++seg;
+        if (seg >= n) { left = -1; return; }
+        from = y; len = left = (int) (segs[seg].ms * 0.001 * fs);
+        if (left <= 0) { y = segs[seg].target; next(); }
+    }
+    inline double tick()
+    {
+        if (left > 0)
+        {
+            const double x = 1.0 - (double) left / (double) len;   // 0..1 through the segment
+            const double c = segs[seg].curve;
+            double shape = x;
+            if (std::abs (c) > 1e-4)
+            {
+                const double k = c * -6.0;   // -0.7 -> 4.2: quick at first, then slowing
+                shape = (1.0 - std::exp (-k * x)) / (1.0 - std::exp (-k));
+            }
+            y = from + (segs[seg].target - from) * shape;
+            if (--left == 0) { y = segs[seg].target; next(); }
+        }
+        return y;
+    }
+};
+
+// reson~: two-pole resonant band-pass, gain at the centre about = gain
+struct Reson
+{
+    double c1 = 0, c2 = 0, r = 0, g = 1, x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    void set (double gain, double f, double q, double fs)
+    {
+        if (f > fs * 0.45) f = fs * 0.45;
+        const double bw = f / (q > 0.01 ? q : 0.01);
+        r = std::exp (-kPi * bw / fs);
+        c1 = 2.0 * r * std::cos (kTwoPi * f / fs); c2 = -r * r;
+        g = gain * (1.0 - r);
+    }
+    inline double tick (double x)
+    {
+        const double y = g * (x - r * x2) + c1 * y1 + c2 * y2;
+        x2 = x1; x1 = x; y2 = y1; y1 = y;
+        return y;
+    }
+    void clear() { x1 = x2 = y1 = y2 = 0; }
+};
+
+// filtercoeff~ gainbpass + biquad~: band-pass with 0 dB peak, times gain
+struct BandBiquad
+{
+    double b0 = 0, b2 = 0, a1 = 0, a2 = 0, x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    void set (double f, double gain, double q, double fs)
+    {
+        if (f > fs * 0.45) f = fs * 0.45;
+        const double w = kTwoPi * f / fs, al = std::sin (w) / (2.0 * q), a0 = 1.0 + al;
+        b0 = gain * al / a0; b2 = -b0; a1 = -2.0 * std::cos (w) / a0; a2 = (1.0 - al) / a0;
+    }
+    inline double tick (double x)
+    {
+        const double y = b0 * x + b2 * x2 - a1 * y1 - a2 * y2;
+        x2 = x1; x1 = x; y2 = y1; y1 = y;
+        return y;
+    }
+};
+
+struct WhiteNoise
+{
+    uint32_t s = 0x9e3779b9u;
+    inline double tick() { s ^= s << 13; s ^= s >> 17; s ^= s << 5; return (double) s / 2147483648.0 - 1.0; }
+};
+
 inline double vel (int v) { const double m = v < 100 ? v : 100; return 0.3 + 0.7 * m / 100.0; }
 inline double softClip (double x) { return x / std::sqrt (1.0 + x * x); }
 } // namespace dsp
@@ -339,6 +451,18 @@ private:
 
         // decay coefficients (cheap, so always)
         const auto df = [&] (int v) { return dsp::decayFactor (p.decay[v]); };
+        // DR-110 voices from the Max for Live device: bass drum, snare, clap
+        bd2Freq = 55.0 * dsp::semis (p.tune[BD]);
+        bd2Start = bd2Freq * (1.0 + p.bdAttack / 50.0);   // ATTACK = pitch-drop depth (50 % = an octave, as in the device)
+        bd2Q = 6.5 * df (BD);
+        sd2Snappy = p.sdSnappy / 60.0;
+        sd2DecayMs = 150.0 * df (SD);
+        sd2Tone.set (235.0 * dsp::semis (p.tune[SD]), 0.5, fs);
+        sd2Noise.set (3550.0 * dsp::semis (p.tune[SD] * 0.5), 0.2, fs);
+        cp2Tail = 0.05 * p.cpTail / 15.0;
+        cp2DecayMs = 139.0 * df (CP);
+        cp2TailMs = 699.0 * df (CP);
+        cp2Bq.set (1140.0 * dsp::semis (p.tune[CP]), 0.333, 1.55, fs);
         bdFreq = 58.0 * dsp::semis (p.tune[BD]);
         // the bass drum's decay follows its pitch, like the original: higher = shorter
         bdR = dsp::tauCoef (fs, 0.075 * df (BD) * std::pow (58.0 / bdFreq, 0.8));
@@ -471,6 +595,12 @@ private:
     double chCoef = 0.99, ohCoef = 0.999, cyTingAmt = 1, cyBodyAmt = 1;
     bool ohChoked = false;
     // clap
+    // DR-110 device voices
+    static constexpr double kBdTrim = 0.70, kSdTrim = 4.0, kCpTrim = 2.9;   // match the levels of the other drums
+    dsp::WhiteNoise white;
+    dsp::Zigzag bd2Pitch, bd2Exc; dsp::Reson bd2Res; double bd2A = 0, bd2Freq = 55, bd2Start = 110, bd2Q = 6.5;
+    dsp::Curve sd2Step, sd2Env; dsp::Svf sd2Tone, sd2Noise; double sd2A = 0, sd2Slide = 0, sd2Snappy = 1, sd2DecayMs = 150;
+    dsp::Curve cp2Hits, cp2TailEnv; dsp::BandBiquad cp2Bq; double cp2A = 0, cp2Tail = 0.05, cp2DecayMs = 139, cp2TailMs = 699;
     dsp::Svf cpBp, cpTailBp; dsp::OnePole cpTailLp; dsp::Env cpHit, cpTail;
     int cpClock = -1; double cpLevel = 1, cpShortCoef = 0.99, cpLastCoef = 0.999, cpTailAmt = 0.45;
     // accent + output
@@ -486,9 +616,24 @@ private:
     {
         switch (voice)
         {
-            case BD: bdPulseLeft = (int) (fs * 0.001); bdPulseLevel = level; bdEnvPitch.coef = dsp::tauCoef (fs, 0.007); bdEnvPitch.trigger (1.0); break;
-            case SD: sdPulseLeft = (int) (fs * 0.001); sdPulseLevel = level; sdSnap.trigger (level); break;
-            case CP: cpClock = 0; cpLevel = level; cpTail.trigger (level); break;   // the tail envelope starts with the hits
+            case BD:
+                // trigger: reson~ cleared, its frequency 110 Hz (start) held 4 ms then down to 55 Hz in 2 ms, excited by a 3 ms kick
+                bd2A = 0.5 * level;
+                bd2Res.clear();
+                bd2Pitch.start (bd2Start, { { bd2Start, 4.0 }, { bd2Freq, 2.0 } }, fs);
+                bd2Exc.start (8.0, { { -2.0, 1.0 }, { 0.0, 2.0 } }, fs);
+                break;
+            case SD:
+                sd2A = 0.5 * level;
+                sd2Step.start ({ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 } }, fs);                       // the tone: a step into the 235 Hz band-pass
+                sd2Env.start ({ { 0.0, 0.0, 0.0 }, { 1.0, 1.0, 0.0 }, { 0.0, sd2DecayMs, -0.7 } }, fs);   // the noise
+                break;
+            case CP:
+                cp2A = 0.5 * level;
+                cp2Hits.start ({ { 0, 0, 0 }, { 1, 1, 0 }, { 0, 9, -0.7 }, { 1, 1, 0 }, { 0, 9, -0.7 }, { 1, 1, 0 }, { 0, 9, -0.7 },
+                                 { 1, 1, 0 }, { 0, cp2DecayMs, -0.7 } }, fs);
+                cp2TailEnv.start ({ { 0, 0, 0 }, { cp2Tail, 1, 0 }, { 0, cp2TailMs, -0.7 } }, fs);
+                break;
             case CH: chEnv.trigger (level); ohChoked = true; ohEnv.coef = dsp::tauCoef (fs, 0.004); break;   // closed hat cuts the open hat
             case OH: ohChoked = false; ohEnv.coef = ohCoef; ohEnv.trigger (level); break;
             case CY: cyTing.trigger (level); cyBody.trigger (level); cyLow.trigger (level * 0.45); break;
@@ -500,22 +645,25 @@ private:
     {
         const double n = noise.tick();
 
-        // ---- bass drum: lowpassed trigger pulse rings the damped oscillator, and is heard itself as the "whack"
-        double pulse = 0.0;
-        if (bdPulseLeft > 0) { pulse = bdPulseLevel; --bdPulseLeft; }
-        const double p = bdPulseLp.lp (pulse);
-        const double bend = 1.0 + 0.12 * bdEnvPitch.tick();
-        const double w = dsp::kTwoPi * bdFreq * bend / fs;
-        const double body = bdRing.tick (p * (6.0 / (fs * 0.001)), bdR, w);
-        v[BD] = dsp::softClip (body * 0.8) * 1.2 + p * bdWhack * 0.55;
+        // ---- bass drum (DR-110 device): a short kick into reson~ (gain 5, Q 6.5) whose pitch drops an octave
+        {
+            const double f = bd2Pitch.tick();
+            bd2Res.set (5.0, f, bd2Q, fs);
+            const double x = bd2Exc.tick() * bd2A * 6.0 * 0.5;
+            v[BD] = -bd2Res.tick (x) * 3.0 * kBdTrim;
+        }
 
-        // ---- snare: the unfiltered trigger rings a higher damped oscillator; gated noise is the snap
-        double sp = 0.0;
-        if (sdPulseLeft > 0) { sp = sdPulseLevel; --sdPulseLeft; }
-        const double sbody = sdRing.tick (sp * (1.6 / (fs * 0.001)), sdR, dsp::kTwoPi * sdFreq / fs);
-        const double snap = sdSnapLp.lp (sdSnapHp.hp (n * sdSnap.tick()));
-        v[SD] = sbody * 0.75 + sp * 0.12 + snap * sdSnappy * 0.9;
-
+        // ---- snare (DR-110 device): stepped 235 Hz band-pass "tone" against band-passed noise (3550 Hz)
+        {
+            double l, b;
+            sd2Tone.tick (sd2Step.tick() * 4.0 * sd2A, l, b);
+            const double tone = -b;
+            const double e = sd2Env.tick();
+            sd2Slide += (e - sd2Slide) / (e > sd2Slide ? 50.0 : 150.0) * (48000.0 / fs);
+            double nl, nb;
+            sd2Noise.tick (white.tick() * 2.0 * sd2Slide * 0.7 * sd2A * sd2Snappy, nl, nb);
+            v[SD] = (tone + nb) * 1.5 * kSdTrim;
+        }
         // ---- hats: high metal through their VCAs
         const double chM = chF.tick (metalCh.tick (n));
         const double ohM = ohF.tick (metalOh.tick (n));
@@ -537,15 +685,11 @@ private:
             if (cpClock == 3 * ms10) { cpHit.coef = cpLastCoef; cpHit.e = 0; cpHit.trigger (cpLevel); cpClock = -2; }
             if (cpClock >= 0) ++cpClock;
         }
-        double cl, cb;
-        // transistor VCA: no output below its threshold, so the tail stops short ("gated") instead of fading out
-        auto vca = [] (double e, double th) { const double x = e - th; return x > 0.0 ? x * x / ((1.0 - th) * (1.0 - th)) : 0.0; };
-        const double hitE = cpHit.tick(), tailE = cpTail.tick();
-        cpBp.tick (n * hitE, cl, cb);
-        double tl, tb;
-        cpTailBp.tick (n * vca (tailE / (cpLevel > 0.0 ? cpLevel : 1.0), 0.22) * cpLevel, tl, tb);
-        cb += cpTailLp.lp (tb) * cpTailAmt * 3.2;
-        v[CP] = cb * 1.5;
+        // ---- hand clap (DR-110 device): three 10 ms bursts + a longer one and a quiet room tail, on noise into a 1140 Hz band-pass
+        {
+            const double env = cp2Hits.tick() + cp2TailEnv.tick();
+            v[CP] = -cp2Bq.tick (white.tick() * 10.0 * env * 1.5 * cp2A) * 0.333 * 1.1 * kCpTrim;
+        }
     }
 };
 } // namespace tross110
