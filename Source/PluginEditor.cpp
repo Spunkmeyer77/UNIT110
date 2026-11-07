@@ -241,9 +241,9 @@ namespace
 // board-image pixels: first trimmer of group g at (112 + 196 g, 933), 52 px apart.
 // groups: ACC, BD, SD, OH, CH, CY, CP
 const char* kGroupIds[7] = { "acc", "bd", "sd", "oh", "ch", "cy", "cp" };
-const juce::Point<float> kBoardScrews[] = { { 127, 117 }, { 330, 113 }, { 1181, 111 }, { 1385, 107 }, { 113, 240 }, { 1388, 234 },
-                                            { 104, 354 }, { 104, 544 }, { 1385, 457 }, { 103, 678 }, { 1398, 677 }, { 380, 655 }, { 655, 652 } };
-const juce::Rectangle<float> kBoardChips[] = { { 412, 158, 92, 92 }, { 566, 163, 126, 96 }, { 551, 323, 142, 122 } };
+const juce::Point<float> kBoardScrews[] = { { 100, 118 }, { 308, 118 }, { 1190, 118 }, { 1398, 118 }, { 95, 245 }, { 1401, 245 },
+                                            { 92, 366 }, { 1400, 465 }, { 95, 550 }, { 95, 678 }, { 1405, 678 }, { 375, 660 }, { 652, 656 } };
+const juce::Rectangle<float> kBoardChips[] = { { 398, 162, 90, 100 }, { 540, 162, 126, 112 }, { 540, 330, 126, 114 } };
 }
 
 PcbView::PcbView (Tross110Processor& p, Tross110Editor& ed) : proc (p), editor (ed)
@@ -262,26 +262,24 @@ PcbView::PcbView (Tross110Processor& p, Tross110Editor& ed) : proc (p), editor (
         k->setBounds (juce::Rectangle<float> (d + 6, d + 6).withCentre (c).toNearestInt());
         addAndMakeVisible (k);
     };
-    auto groupX = [] (int g) { return 113.0f + 194.8f * (float) g; };
+    auto groupX = [] (int g) { return 114.0f + 195.7f * (float) g; };
     for (int g = 0; g < 7; ++g)
     {
-        const float x0 = groupX (g), y = 800.0f;
+        const float x0 = groupX (g), y = 802.0f;
         const juce::String id = kGroupIds[g];
-        if (g == 0) { add ("acc_drive", x0, y, false); add ("acc_decay", x0 + 51, y, false); add ("accent", x0 + 102, y, false); }
-        else        { add (id + "_tune", x0, y, false); add (id + "_decay", x0 + 51, y, false); add (id + "_lvl", x0 + 102, y, false); }
+        if (g == 0) { add ("acc_drive", x0, y, false); add ("acc_decay", x0 + 50, y, false); add ("accent", x0 + 100, y, false); }
+        else        { add (id + "_tune", x0, y, false); add (id + "_decay", x0 + 50, y, false); add (id + "_lvl", x0 + 100, y, false); }
     }
-    add ("bd_attack", groupX (1) + 112.0f, 741.0f, true);
-    add ("sd_snappy", groupX (2) + 112.0f, 741.0f, true);
-    add ("cy_tone",   groupX (5) + 112.0f, 741.0f, true);
-    add ("cp_tail",   groupX (6) + 112.0f, 741.0f, true);
+    add ("bd_attack", groupX (1) + 112.0f, 754.0f, true);
+    add ("sd_snappy", groupX (2) + 112.0f, 754.0f, true);
+    add ("cy_tone",   groupX (5) + 112.0f, 754.0f, true);
+    add ("cp_tail",   groupX (6) + 112.0f, 754.0f, true);
 }
 
 // board positions were measured on the 1.0.2 layout; this moves them onto the current artwork
 juce::Point<float> PcbView::toView (float x, float y) const
 {
-    const float nx = 10.0f + (x - 10.0f) * 1.002028f, ny = 18.0f + (y - 14.0f) * 1.013575f;
-    const float top = 26.2891f - 0.00487204f * nx, bot = 913.3525f - 0.00365374f * nx;   // straightened like the artwork
-    return { nx, 24.0f + (ny - top) * (904.0f - 24.0f) / (bot - top) };
+    return { x, y };   // board positions are measured on the board image itself
 }
 
 void PcbView::paint (juce::Graphics& g)
@@ -314,34 +312,34 @@ void PcbView::mouseUp (const juce::MouseEvent& e)
 // front panel
 juce::Rectangle<int> FrontPanel::keyRect (int key)
 {
-    static const int numX[8] = { 357, 450, 544, 636, 730, 824, 919, 1013 };
-    static const int numY[8] = { 585, 585, 585, 586, 586, 586, 586, 586 };
+    static const int numX[8] = { 357, 450, 544, 637, 730, 824, 918, 1012 };
+    static const int numY[8] = { 578, 578, 578, 578, 579, 579, 579, 579 };
     switch (key)
     {
-        case Shift:   return { 90, 585, 104, 82 };
-        case Bank:    return { 262, 585, 49, 82 };
-        case Start:   return { 1124, 563, 107, 106 };
-        case Stop:    return { 1301, 563, 108, 105 };
-        case KAccent: return { 89, 737, 136, 90 };
-        case KBD:     return { 283, 737, 137, 90 };
-        case KSD:     return { 479, 738, 135, 89 };
-        case KOH:     return { 675, 738, 133, 90 };
-        case KCH:     return { 871, 739, 135, 89 };
-        case KCY:     return { 1068, 739, 137, 89 };
-        case KCP:     return { 1268, 739, 140, 89 };
+        case Shift:   return { 92, 577, 104, 81 };
+        case Bank:    return { 264, 578, 48, 81 };
+        case Start:   return { 1123, 557, 106, 103 };
+        case Stop:    return { 1300, 557, 106, 103 };
+        case KAccent: return { 93, 728, 133, 88 };
+        case KBD:     return { 287, 728, 133, 89 };
+        case KSD:     return { 481, 728, 132, 89 };
+        case KOH:     return { 675, 729, 132, 88 };
+        case KCH:     return { 872, 729, 133, 88 };
+        case KCY:     return { 1069, 730, 135, 88 };
+        case KCP:     return { 1269, 730, 138, 88 };
         default:      break;
     }
-    if (key >= N1 && key <= N8) return { numX[key - N1], numY[key - N1], 49, 81 };
+    if (key >= N1 && key <= N8) return { numX[key - N1], numY[key - N1], 48, 80 };
     return {};
 }
 
 namespace
 {
 constexpr float kLabelW = 78.0f, kTopRow = 24.0f, kRowH = 22.5f;
-const juce::Point<float> kFrontScrews[] = { { 44, 874 }, { 1458, 874 } };
-const juce::Rectangle<int> kLogo { 100, 50, 362, 68 }, kPowerSwitch { 1240, 0, 76, 52 }, kPowerText { 1256, 62, 92, 44 },
-                           kPowerTab { 1254, 19, 42, 11 };
-const juce::Point<int> kKnobCentre[4] = { { 902, 306 }, { 1059, 305 }, { 1218, 304 }, { 1379, 305 } };
+const juce::Point<float> kFrontScrews[] = { { 42, 864 }, { 1460, 864 } };
+const juce::Rectangle<int> kLogo { 98, 50, 560, 66 }, kPowerSwitch { 1236, 0, 76, 50 }, kPowerText { 1260, 60, 84, 42 },
+                           kPowerTab { 1251, 17, 42, 11 };
+const juce::Point<int> kKnobCentre[4] = { { 899, 303 }, { 1056, 301 }, { 1217, 301 }, { 1377, 301 } };
 }
 
 juce::Rectangle<int> FrontPanel::lcdCell (int row, int step)
@@ -463,16 +461,16 @@ const juce::Colour kPrintInk (0xff26282c), kKeyInk (0xfff1f5f6), kLogoInk (0xffc
 float straightenY (float x, float y, float st, float ot, float sb, float ob)
 {
     const float top = ot + st * x, bot = ob + sb * x;
-    return 24.0f + (y - top) * (904.0f - 24.0f) / (bot - top);
+    return 24.0f + (y - top) * (893.0f - 24.0f) / (bot - top);
 }
 
 juce::Rectangle<float> O (float x, float y, float w, float h)
 {
-    constexpr float fx = 1482.0f / 1479.0f, fy = 896.0f / 884.0f;
-    const float nx = 10.0f + (x - 206.0f) * fx, ny = 18.0f + (y - 252.0f) * fy;
-    const float y0 = straightenY (nx + w * fx * 0.5f, ny, 0.00167013f, 22.5601f, 0.01115439f, 895.7117f);
-    const float y1 = straightenY (nx + w * fx * 0.5f, ny + h * fy, 0.00167013f, 22.5601f, 0.01115439f, 895.7117f);
-    return { nx, y0, w * fx, y1 - y0 };
+    // the 1.0.5 render (scaled to 1920 wide) keeps the original layout: just the crop and the straightening
+    const float nx = x - 195.0f, ny = y - 233.0f;
+    const float y0 = straightenY (nx + w * 0.5f, ny, 0.000963038f, 24.21007f, 0.00878241f, 886.3991f);
+    const float y1 = straightenY (nx + w * 0.5f, ny + h, 0.000963038f, 24.21007f, 0.00878241f, 886.3991f);
+    return { nx, y0, w, y1 - y0 };
 }
 
 // text whose capitals fill the box height; squeezed or stretched (a little) to the box width when fit = true

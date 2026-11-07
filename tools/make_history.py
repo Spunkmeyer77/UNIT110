@@ -14,6 +14,11 @@ VERSION = re.search(r"project\(UNIT110 VERSION ([0-9.]+)\)", open(os.path.join(R
 OUT = os.path.join(ROOT, "docs", "UNIT110-History.pdf")
 
 HISTORY = [
+    ("1.0.5", [
+        "New clean, factory-new look: a pristine front panel, new knobs and a clean circuit board inside the case.",
+        "All lettering, key legends and icons drawn sharp on the new panel; the board print redone (ACC, BD, SD, OH, CH, CY, CP).",
+        "Front panel and case line up exactly, with perfectly level edges.",
+    ]),
     ("1.0.4", [
         "New bass drum, snare and hand clap sound engines, rebuilt from the Transistor Labs DR-110 device: the kick is a 55 Hz resonant "
         "filter struck with an octave pitch drop, the snare a 235 Hz tone with 3550 Hz noise, the clap three short noise bursts, a longer "

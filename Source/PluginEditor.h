@@ -79,7 +79,7 @@ public:
     enum Key { Shift, Bank, N1, N2, N3, N4, N5, N6, N7, N8, Start, Stop,
                KAccent, KBD, KSD, KOH, KCH, KCY, KCP, kNumKeys };
     static juce::Rectangle<int> keyRect (int key);
-    static juce::Rectangle<int> lcdRect() { return { 129, 135, 499, 319 }; }
+    static juce::Rectangle<int> lcdRect() { return { 128, 135, 499, 314 }; }
     static juce::Rectangle<int> lcdCell (int row, int step);   // row 0 = accent
     void pressKey (int key, bool shiftHeld, bool altHeld = false);   // what a click on a key does
     void flash (const juce::String& message);                  // a short message in the LCD's mode box
